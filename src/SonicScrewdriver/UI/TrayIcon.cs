@@ -1,0 +1,411 @@
+using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+
+namespace SonicScrewdriver.UI;
+
+/// <summary>
+/// Native notification-area icon (Shell_NotifyIcon + Win32 menu), without WinForms.
+/// The mouse wheel over the icon is read through Raw Input, registered only while the cursor
+/// hovers the icon, so it costs nothing the rest of the time.
+/// </summary>
+public sealed class TrayIcon : IDisposable
+{
+    private const int WM_APP_TRAY = 0x8000 + 1;
+    private const int WM_INPUT = 0x00FF;
+    private const int WM_MOUSEMOVE = 0x0200, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
+    private const uint IconId = 1;
+    private const int CmdMixer = 1, CmdSettings = 2, CmdExit = 4;
+
+    private readonly HwndSource _window;
+    private readonly IntPtr _hIcon;
+    private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
+    private readonly DispatcherTimer _hoverTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private bool _wheelArmed;
+    private IReadOnlyList<string> _shortcuts = Array.Empty<string>();
+    private string _tip = "Sonic Screwdriver";
+    private int _wheelRemainder;
+    private uint _lastClickTick;
+
+    /// <summary>Name of the current default output device, shown at the top of the menu.</summary>
+    public Func<string?>? DefaultDeviceName { get; set; }
+
+    public event EventHandler? OpenFlyoutRequested;
+    public event EventHandler? OpenSettingsRequested;
+    public event EventHandler? ExitRequested;
+    /// <summary>Wheel over the icon: +1 per notch up, -1 per notch down.</summary>
+    public event EventHandler<int>? WheelScrolled;
+
+    public TrayIcon()
+    {
+        // Hidden top-level popup (not message-only) so it also receives the TaskbarCreated broadcast.
+        _window = new HwndSource(new HwndSourceParameters("SonicScrewdriverTray") { WindowStyle = unchecked((int)0x80000000), Width = 0, Height = 0 });
+        _window.AddHook(WndProc);
+        _hIcon = LoadAppIcon();
+        if (_hIcon == IntPtr.Zero) _hIcon = CreateIcon();
+        _hoverTimer.Tick += (_, _) => { if (!CursorOverIcon()) DisarmWheel(); };
+        AddIcon();
+    }
+
+    /// <summary>Shows the configured shortcuts in the tooltip and at the top of the menu.</summary>
+    public void SetShortcuts(IReadOnlyList<string> lines)
+    {
+        _shortcuts = lines;
+        UpdateTip();
+    }
+
+    /// <summary>Refreshes the tooltip (the default device can change at any time); no-op when unchanged.</summary>
+    private void UpdateTip()
+    {
+        var tip = Bindings.ShortcutSummary.Tooltip(DefaultDeviceName?.Invoke(), _shortcuts);
+        if (tip == _tip) return;
+        _tip = tip;
+        var data = NewData(NIF_TIP);
+        data.szTip = _tip;
+        Shell_NotifyIcon(NIM_MODIFY, ref data);
+    }
+
+    public void Notify(string title, string text)
+    {
+        var data = NewData(NIF_INFO);
+        data.szInfoTitle = Truncate(title, 63);
+        data.szInfo = Truncate(text, 255);
+        data.dwInfoFlags = NIIF_INFO;
+        Shell_NotifyIcon(NIM_MODIFY, ref data);
+    }
+
+    private void AddIcon()
+    {
+        var data = NewData(NIF_MESSAGE | NIF_ICON | NIF_TIP);
+        data.uCallbackMessage = WM_APP_TRAY;
+        data.hIcon = _hIcon;
+        data.szTip = _tip;
+        Shell_NotifyIcon(NIM_ADD, ref data);
+    }
+
+    private NOTIFYICONDATA NewData(uint flags) => new()
+    {
+        cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
+        hWnd = _window.Handle,
+        uID = IconId,
+        uFlags = flags,
+        szTip = "", szInfo = "", szInfoTitle = "",
+    };
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_APP_TRAY)
+        {
+            switch ((int)lParam)
+            {
+                case WM_LBUTTONUP:
+                    // A double-click sends two button-ups: treat it as one click.
+                    var now = (uint)Environment.TickCount;
+                    if (now - _lastClickTick > GetDoubleClickTime()) OpenFlyoutRequested?.Invoke(this, EventArgs.Empty);
+                    _lastClickTick = now;
+                    break;
+                case WM_RBUTTONUP: ShowMenu(); break;
+                case WM_MOUSEMOVE:
+                    if (!_wheelArmed) UpdateTip(); // once per hover, before the tooltip appears
+                    ArmWheel();
+                    break;
+            }
+            handled = true;
+        }
+        else if (msg == WM_INPUT && _wheelArmed)
+        {
+            var delta = ReadWheel(lParam);
+            if (delta != 0 && CursorOverIcon())
+            {
+                // High-resolution wheels send small deltas: one step per full 120-unit notch.
+                _wheelRemainder += delta;
+                var notches = _wheelRemainder / 120;
+                _wheelRemainder %= 120;
+                if (notches != 0) WheelScrolled?.Invoke(this, notches);
+            }
+        }
+        else if (msg == _taskbarCreated && _taskbarCreated != 0)
+        {
+            AddIcon(); // Explorer restarted: put the icon back
+        }
+        return IntPtr.Zero;
+    }
+
+    private void ShowMenu()
+    {
+        var menu = CreatePopupMenu();
+        try
+        {
+            var device = DefaultDeviceName?.Invoke();
+            AppendMenu(menu, MF_STRING | MF_GRAYED, 0, "Output: " + (device ?? "none"));
+            AppendMenu(menu, MF_SEPARATOR, 0, null);
+            foreach (var line in _shortcuts) AppendMenu(menu, MF_STRING | MF_GRAYED, 0, line);
+            if (_shortcuts.Count > 0) AppendMenu(menu, MF_SEPARATOR, 0, null);
+            AppendMenu(menu, MF_STRING, CmdMixer, "Mixer");
+            AppendMenu(menu, MF_STRING, CmdSettings, "Shortcut settings…");
+            AppendMenu(menu, MF_SEPARATOR, 0, null);
+            AppendMenu(menu, MF_STRING, CmdExit, "Exit");
+            GetCursorPos(out var pt);
+            SetForegroundWindow(_window.Handle); // required so the menu closes on an outside click
+            var cmd = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, pt.X, pt.Y, _window.Handle, IntPtr.Zero);
+            PostMessage(_window.Handle, 0, IntPtr.Zero, IntPtr.Zero); // WM_NULL, per TrackPopupMenu docs
+            switch (cmd)
+            {
+                case CmdMixer: OpenFlyoutRequested?.Invoke(this, EventArgs.Empty); break;
+                case CmdSettings: OpenSettingsRequested?.Invoke(this, EventArgs.Empty); break;
+                case CmdExit: ExitRequested?.Invoke(this, EventArgs.Empty); break;
+            }
+        }
+        finally { DestroyMenu(menu); }
+    }
+
+    // --- Mouse wheel over the icon -------------------------------------------------------------
+
+    private void ArmWheel()
+    {
+        if (_wheelArmed) return;
+        var device = new RAWINPUTDEVICE { usUsagePage = 0x01, usUsage = 0x02, dwFlags = RIDEV_INPUTSINK, hwndTarget = _window.Handle };
+        _wheelArmed = RegisterRawInputDevices(new[] { device }, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
+        if (_wheelArmed) _hoverTimer.Start();
+    }
+
+    private void DisarmWheel()
+    {
+        _hoverTimer.Stop();
+        if (!_wheelArmed) return;
+        var device = new RAWINPUTDEVICE { usUsagePage = 0x01, usUsage = 0x02, dwFlags = RIDEV_REMOVE, hwndTarget = IntPtr.Zero };
+        RegisterRawInputDevices(new[] { device }, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
+        _wheelArmed = false;
+    }
+
+    private static int ReadWheel(IntPtr hRawInput)
+    {
+        uint size = 0;
+        var headerSize = (uint)Marshal.SizeOf<RAWINPUTHEADER>();
+        GetRawInputData(hRawInput, RID_INPUT, IntPtr.Zero, ref size, headerSize);
+        if (size == 0 || size > 1024) return 0;
+        var buffer = Marshal.AllocHGlobal((int)size);
+        try
+        {
+            if (GetRawInputData(hRawInput, RID_INPUT, buffer, ref size, headerSize) != size) return 0;
+            if (Marshal.ReadInt32(buffer) != RIM_TYPEMOUSE) return 0;
+            // RAWMOUSE: usFlags (2) + padding (2), then usButtonFlags (2), usButtonData (2).
+            var flags = (ushort)Marshal.ReadInt16(buffer, (int)headerSize + 4);
+            if ((flags & RI_MOUSE_WHEEL) == 0) return 0;
+            var delta = Marshal.ReadInt16(buffer, (int)headerSize + 6);
+            return delta;
+        }
+        finally { Marshal.FreeHGlobal(buffer); }
+    }
+
+    private bool CursorOverIcon()
+    {
+        var id = new NOTIFYICONIDENTIFIER { cbSize = (uint)Marshal.SizeOf<NOTIFYICONIDENTIFIER>(), hWnd = _window.Handle, uID = IconId };
+        if (Shell_NotifyIconGetRect(ref id, out var r) < 0) return false;
+        GetCursorPos(out var pt);
+        return pt.X >= r.Left && pt.X < r.Right && pt.Y >= r.Top && pt.Y < r.Bottom;
+    }
+
+    // --- Icon -----------------------------------------------------------------------------------
+
+    /// <summary>The exe's embedded application icon at the small-icon size for the current DPI.</summary>
+    private static IntPtr LoadAppIcon()
+    {
+        const int IDI_APPLICATION_RESOURCE = 32512; // ID the .NET SDK gives the ApplicationIcon resource
+        var cx = GetSystemMetrics(SM_CXSMICON);
+        var cy = GetSystemMetrics(SM_CYSMICON);
+        // LoadImage (user32) picks the best frame; LoadIconWithScaleDown would need comctl32 v6.
+        return LoadImage(GetModuleHandle(null), (IntPtr)IDI_APPLICATION_RESOURCE, IMAGE_ICON, cx, cy, 0);
+    }
+
+    /// <summary>Fallback: speaker glyph (Segoe MDL2 Assets) with an accent dot, rendered by WPF into an HICON.</summary>
+    private static IntPtr CreateIcon()
+    {
+        const int size = 32;
+        var visual = new DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            var text = new FormattedText("", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                new Typeface("Segoe MDL2 Assets"), 22, Brushes.White, 1.0);
+            dc.DrawText(text, new Point((size - text.Width) / 2, (size - text.Height) / 2));
+            dc.DrawEllipse(new SolidColorBrush(Color.FromRgb(10, 132, 255)), null, new Point(26, 26), 5, 5);
+        }
+        var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var pixels = new byte[size * size * 4];
+        bitmap.CopyPixels(pixels, size * 4, 0);
+
+        var color = CreateBitmap(size, size, 1, 32, pixels);
+        var mask = CreateBitmap(size, size, 1, 1, new byte[size * size / 8]);
+        try
+        {
+            var info = new ICONINFO { fIcon = true, hbmColor = color, hbmMask = mask };
+            return CreateIconIndirect(ref info);
+        }
+        finally
+        {
+            DeleteObject(color);
+            DeleteObject(mask);
+        }
+    }
+
+    private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
+
+    public void Dispose()
+    {
+        DisarmWheel();
+        var data = NewData(0);
+        Shell_NotifyIcon(NIM_DELETE, ref data);
+        DestroyIcon(_hIcon);
+        _window.Dispose();
+    }
+
+    // --- Interop --------------------------------------------------------------------------------
+
+    private const uint NIM_ADD = 0, NIM_MODIFY = 1, NIM_DELETE = 2;
+    private const uint NIF_MESSAGE = 0x1, NIF_ICON = 0x2, NIF_TIP = 0x4, NIF_INFO = 0x10;
+    private const uint NIIF_INFO = 0x1;
+    private const uint MF_STRING = 0x0, MF_GRAYED = 0x1, MF_SEPARATOR = 0x800;
+    private const uint TPM_RIGHTBUTTON = 0x2, TPM_NONOTIFY = 0x80, TPM_RETURNCMD = 0x100;
+    private const uint RIDEV_REMOVE = 0x1, RIDEV_INPUTSINK = 0x100;
+    private const uint RID_INPUT = 0x10000003;
+    private const int RIM_TYPEMOUSE = 0;
+    private const ushort RI_MOUSE_WHEEL = 0x0400;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NOTIFYICONDATA
+    {
+        public uint cbSize;
+        public IntPtr hWnd;
+        public uint uID;
+        public uint uFlags;
+        public int uCallbackMessage;
+        public IntPtr hIcon;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string szTip;
+        public uint dwState;
+        public uint dwStateMask;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string szInfo;
+        public uint uTimeoutOrVersion;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)] public string szInfoTitle;
+        public uint dwInfoFlags;
+        public Guid guidItem;
+        public IntPtr hBalloonIcon;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NOTIFYICONIDENTIFIER
+    {
+        public uint cbSize;
+        public IntPtr hWnd;
+        public uint uID;
+        public Guid guidItem;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X, Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ICONINFO
+    {
+        [MarshalAs(UnmanagedType.Bool)] public bool fIcon;
+        public int xHotspot;
+        public int yHotspot;
+        public IntPtr hbmMask;
+        public IntPtr hbmColor;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RAWINPUTDEVICE
+    {
+        public ushort usUsagePage;
+        public ushort usUsage;
+        public uint dwFlags;
+        public IntPtr hwndTarget;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RAWINPUTHEADER
+    {
+        public uint dwType;
+        public uint dwSize;
+        public IntPtr hDevice;
+        public IntPtr wParam;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool Shell_NotifyIcon(uint message, ref NOTIFYICONDATA data);
+
+    [DllImport("shell32.dll")]
+    private static extern int Shell_NotifyIconGetRect(ref NOTIFYICONIDENTIFIER identifier, out RECT iconLocation);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint RegisterWindowMessage(string message);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreatePopupMenu();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDoubleClickTime();
+
+    private const int SM_CXSMICON = 49, SM_CYSMICON = 50;
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int index);
+
+    private const uint IMAGE_ICON = 1;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr LoadImage(IntPtr instance, IntPtr name, uint type, int cx, int cy, uint flags);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr GetModuleHandle(string? moduleName);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AppendMenu(IntPtr menu, uint flags, int id, string? text);
+
+    [DllImport("user32.dll")]
+    private static extern int TrackPopupMenuEx(IntPtr menu, uint flags, int x, int y, IntPtr hwnd, IntPtr tpm);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyMenu(IntPtr menu);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out POINT point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hwnd);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterRawInputDevices(RAWINPUTDEVICE[] devices, uint count, uint size);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetRawInputData(IntPtr rawInput, uint command, IntPtr data, ref uint size, uint headerSize);
+
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateBitmap(int width, int height, uint planes, uint bitsPerPixel, byte[] bits);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr obj);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CreateIconIndirect(ref ICONINFO info);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr icon);
+}

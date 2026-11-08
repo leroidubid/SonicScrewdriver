@@ -1,0 +1,91 @@
+<Window x:Class="SonicScrewdriver.UI.FlyoutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:SonicScrewdriver.UI"
+        Title="Sonic Screwdriver" Width="360" SizeToContent="Height" MaxHeight="720"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True">
+    <Border CornerRadius="8" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1" Padding="14,10">
+        <DockPanel>
+            <TextBlock DockPanel.Dock="Bottom" x:Name="EmptyText" Text="No application is playing sound."
+                       Foreground="{StaticResource SubtleBrush}" Margin="0,8,0,2" Visibility="Collapsed"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Devices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type ui:DeviceViewModel}">
+                            <StackPanel Margin="0,4,0,8">
+                                <!-- Device header: name, default marker / make-default button, volume -->
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Set as default" Style="{StaticResource LinkButton}"
+                                            Click="SetDefault_Click" Tag="{Binding}" ToolTip="Make this the default output device">
+                                        <Button.Visibility>
+                                            <Binding Path="IsDefault" Converter="{StaticResource InverseBoolToVisibility}"/>
+                                        </Button.Visibility>
+                                    </Button>
+                                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0"
+                                               Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" ToolTip="Default device"
+                                               Visibility="{Binding IsDefault, Converter={StaticResource BoolToVisibility}}"/>
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource SubtleBrush}" FontSize="12"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <Grid Margin="0,4,0,6" Background="Transparent" ui:WheelVolume.Slider="{Binding ElementName=DeviceSlider}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="40"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ToggleButton Style="{StaticResource MuteToggle}" IsChecked="{Binding Muted}"/>
+                                    <Slider x:Name="DeviceSlider" Grid.Column="1" Margin="8,0" Style="{StaticResource FlatSlider}" Value="{Binding Volume}"/>
+                                    <TextBlock Grid.Column="2" Foreground="{StaticResource FgBrush}" VerticalAlignment="Center"
+                                               TextAlignment="Right" Text="{Binding Volume, StringFormat={}{0:0}}"/>
+                                </Grid>
+
+                                <ItemsControl ItemsSource="{Binding Apps}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type ui:AppVolumeViewModel}">
+                                            <Grid Margin="0,4" Background="Transparent" ToolTip="{Binding ExeName}"
+                                                  ui:WheelVolume.Slider="{Binding ElementName=AppSlider}"
+                                                  ContextMenuOpening="AppRow_ContextMenuOpening">
+                                                <Grid.ContextMenu>
+                                                    <ContextMenu/>
+                                                </Grid.ContextMenu>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="40"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Grid Grid.RowSpan="2" Width="24" Height="24" VerticalAlignment="Center">
+                                                    <TextBlock Text="&#xE8D6;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                               Foreground="{StaticResource SubtleBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    <Image Source="{Binding Icon}" Width="24" Height="24"/>
+                                                </Grid>
+                                                <TextBlock Grid.Column="1" Grid.ColumnSpan="2" Margin="8,0,0,0" Text="{Binding DisplayName}"
+                                                           Foreground="{StaticResource FgBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <Grid Grid.Row="1" Grid.Column="1" Margin="4,2,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <ToggleButton Style="{StaticResource MuteToggle}" IsChecked="{Binding Muted}"/>
+                                                    <Slider x:Name="AppSlider" Grid.Column="1" Margin="6,0" Style="{StaticResource FlatSlider}" Value="{Binding Volume}"/>
+                                                </Grid>
+                                                <TextBlock Grid.Row="1" Grid.Column="2" Foreground="{StaticResource FgBrush}" VerticalAlignment="Center"
+                                                           TextAlignment="Right" Text="{Binding Volume, StringFormat={}{0:0}}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</Window>

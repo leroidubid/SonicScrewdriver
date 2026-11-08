@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9DC6C959-B63C-49F4-B166-9E672B2DC5B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SonicScrewdriver", "src\SonicScrewdriver\SonicScrewdriver.csproj", "{6DC8A4B1-4B2D-48A6-9FA5-AF09182D0087}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{6D11BC92-8AC4-4F53-87EE-FADB2A295D2D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SonicScrewdriver.Tests", "tests\SonicScrewdriver.Tests\SonicScrewdriver.Tests.csproj", "{36334FFF-DA92-46BE-AFF6-5A863141FC5A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6DC8A4B1-4B2D-48A6-9FA5-AF09182D0087}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DC8A4B1-4B2D-48A6-9FA5-AF09182D0087}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DC8A4B1-4B2D-48A6-9FA5-AF09182D0087}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DC8A4B1-4B2D-48A6-9FA5-AF09182D0087}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36334FFF-DA92-46BE-AFF6-5A863141FC5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36334FFF-DA92-46BE-AFF6-5A863141FC5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36334FFF-DA92-46BE-AFF6-5A863141FC5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36334FFF-DA92-46BE-AFF6-5A863141FC5A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6DC8A4B1-4B2D-48A6-9FA5-AF09182D0087} = {9DC6C959-B63C-49F4-B166-9E672B2DC5B7}
+		{36334FFF-DA92-46BE-AFF6-5A863141FC5A} = {6D11BC92-8AC4-4F53-87EE-FADB2A295D2D}
+	EndGlobalSection
+EndGlobal
