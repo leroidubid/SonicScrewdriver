@@ -149,8 +149,20 @@ public sealed class TrayIcon : IDisposable
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdExit, "Exit");
             GetCursorPos(out var pt);
+            var flags = TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON;
+            // The cursor sits on the taskbar: anchor the menu to the work-area edge so it opens
+            // above (or beside) the taskbar instead of behind it.
+            var monitorInfo = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+            if (GetMonitorInfo(MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), ref monitorInfo))
+            {
+                var work = monitorInfo.rcWork;
+                if (pt.Y >= work.Bottom) { pt.Y = work.Bottom; flags |= TPM_BOTTOMALIGN; }
+                else if (pt.Y < work.Top) pt.Y = work.Top;
+                if (pt.X >= work.Right) { pt.X = work.Right; flags |= TPM_RIGHTALIGN; }
+                else if (pt.X < work.Left) pt.X = work.Left;
+            }
             SetForegroundWindow(_window.Handle); // required so the menu closes on an outside click
-            var cmd = TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON, pt.X, pt.Y, _window.Handle, IntPtr.Zero);
+            var cmd = TrackPopupMenuEx(menu, flags, pt.X, pt.Y, _window.Handle, IntPtr.Zero);
             PostMessage(_window.Handle, 0, IntPtr.Zero, IntPtr.Zero); // WM_NULL, per TrackPopupMenu docs
             switch (cmd)
             {
@@ -269,7 +281,24 @@ public sealed class TrayIcon : IDisposable
     private const uint NIF_MESSAGE = 0x1, NIF_ICON = 0x2, NIF_TIP = 0x4, NIF_INFO = 0x10;
     private const uint NIIF_INFO = 0x1;
     private const uint MF_STRING = 0x0, MF_GRAYED = 0x1, MF_SEPARATOR = 0x800;
-    private const uint TPM_RIGHTBUTTON = 0x2, TPM_NONOTIFY = 0x80, TPM_RETURNCMD = 0x100;
+    private const uint TPM_RIGHTBUTTON = 0x2, TPM_RIGHTALIGN = 0x8, TPM_BOTTOMALIGN = 0x20, TPM_NONOTIFY = 0x80, TPM_RETURNCMD = 0x100;
+    private const uint MONITOR_DEFAULTTONEAREST = 2;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO
+    {
+        public uint cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
     private const uint RIDEV_REMOVE = 0x1, RIDEV_INPUTSINK = 0x100;
     private const uint RID_INPUT = 0x10000003;
     private const int RIM_TYPEMOUSE = 0;
