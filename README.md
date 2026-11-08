@@ -29,10 +29,16 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 
 ## Install
 
-1. Install the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) if you don't have it.
-2. Download `SonicScrewdriver.exe` from the Releases page and run it. No installer is needed.
+1. Install the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) if you don't have it
+   (the installer checks and links to it).
+2. From the Releases page, download either:
+   - `SonicScrewdriver-Setup-x.y.z.exe`: per-user install, no admin rights, Start menu shortcut,
+     optional start with Windows, clean uninstall;
+   - or `SonicScrewdriver.exe`: portable, just run it.
 3. Right-click the tray icon, choose **Shortcut settings**, and add your shortcuts.
-   **Start with Windows** is in the same window.
+
+Windows SmartScreen may warn on first run because the files are not code-signed:
+click **More info**, then **Run anyway**.
 
 The default shortcut is `Ctrl + media keys` on the foreground app. Settings are stored in
 `%APPDATA%\SonicScrewdriver\settings.json`.
@@ -58,6 +64,12 @@ dotnet test
 
 ```bash
 dotnet publish src/SonicScrewdriver -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:DebugType=none -o publish
+```
+
+Installer (requires [Inno Setup 6](https://jrsoftware.org/isinfo.php), after publishing):
+
+```bash
+iscc installer/SonicScrewdriver.iss /DAppVersion=1.0.0
 ```
 
 `tools/e2e-test.ps1` runs an end-to-end test against the running app (synthetic key presses).

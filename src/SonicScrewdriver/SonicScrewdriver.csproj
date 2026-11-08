@@ -9,6 +9,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>SonicScrewdriver</AssemblyName>
     <RootNamespace>SonicScrewdriver</RootNamespace>
+    <Version>1.0.0</Version>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <!-- Lightweight tray app: no background GC thread, smaller heaps. -->
     <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>

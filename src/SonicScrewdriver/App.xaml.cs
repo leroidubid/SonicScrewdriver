@@ -78,6 +78,7 @@ public partial class App : Application
     {
         _store = new SettingsStore(SettingsStore.DefaultPath);
         _settings = _store.Load();
+        _settings.StartWithWindows = StartupRegistration.IsEnabled(); // the installer may have set it
         _resolver = new BindingResolver(_settings.Bindings);
 
         _audio = new AudioSessionService();
