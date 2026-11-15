@@ -1,7 +1,8 @@
 name: Release
 
 # Push a tag like v1.1.0: builds the portable exe and the installer, then attaches both to the
-# GitHub release (created from CHANGELOG.md if it does not exist yet).
+# GitHub release (created from CHANGELOG.md if it does not exist yet), with SHA256 checksums and a
+# ready-to-submit winget manifest.
 on:
   push:
     tags: ['v*']
@@ -42,13 +43,25 @@ jobs:
           & $iscc /Q installer\SonicScrewdriver.iss /DAppVersion=${{ steps.v.outputs.version }}
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # The hash is computed from the exact file that gets uploaded, so winget always matches.
+      - name: Checksums and winget manifest
+        shell: pwsh
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          $setup = "publish/SonicScrewdriver-Setup-$v.exe"
+          Get-ChildItem publish/SonicScrewdriver.exe, $setup | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content publish/SHA256SUMS.txt
+          ./installer/make-winget-manifest.ps1 -Version $v -Setup $setup -Repo "${{ github.repository }}" -OutDir "publish/winget-$v"
+          Compress-Archive "publish/winget-$v/*" "publish/winget-manifest-$v.zip" -Force
+
       - name: Release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.v.outputs.version }}"
-          FILES=("publish/SonicScrewdriver.exe" "publish/SonicScrewdriver-Setup-${VERSION}.exe")
+          FILES=("publish/SonicScrewdriver.exe" "publish/SonicScrewdriver-Setup-${VERSION}.exe" "publish/SHA256SUMS.txt" "publish/winget-manifest-${VERSION}.zip")
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${FILES[@]}" --clobber
           else
