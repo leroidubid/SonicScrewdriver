@@ -35,6 +35,9 @@ First public release.
 - **Settings window:** apps are listed as "Name (exe)", with the output-device cycle list and the
   Start with Windows option. Settings are saved to `%APPDATA%\SonicScrewdriver\settings.json`;
   hand-edited files are sanitized on load and corrupt files are backed up.
+- **Pixel-art tray icon:** the 16, 20, 24 and 32 px frames of the icon (what the notification area uses at 100 to
+  200 % scale) are hand-placed pixel art, so the screwdriver stays readable; larger sizes keep the smooth drawing. The
+  red competitive-mode icon now turns only the blue emitter and sound arcs red, keeping the steel and grip neutral.
 - **Installer:** per-user Inno Setup installer that needs no admin rights, with a Start menu
   shortcut, an optional start with Windows, a .NET 8 Desktop Runtime check and a clean uninstall.
   A portable single-file exe is also provided.

@@ -1,12 +1,15 @@
 """Generates src/SonicScrewdriver/Assets/app.ico (16-256 px) and a 256 px PNG preview.
 
 A stylized sonic screwdriver lying diagonally, glowing blue emitter, sound waves.
-Small sizes (<= 24 px) use a bolder, simplified drawing so they stay readable in the tray.
+The tray sizes (16, 20, 24, 32 px) are hand-placed pixel art (tools/pixel_icons.py); from 40 px up the smooth
+drawing below is scaled down.
 Run: python tools/make_icon.py
 """
 import math
 import os
 from PIL import Image, ImageDraw, ImageFilter
+
+import pixel_icons
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "SonicScrewdriver", "Assets")
@@ -95,12 +98,17 @@ def render(simple: bool) -> Image.Image:
     return img
 
 
+def pixel_frame(size: int) -> Image.Image:
+    img = Image.new("RGBA", (size, size))
+    img.putdata(pixel_icons.frame(size))
+    return img
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     detailed = render(simple=False)
-    simple = render(simple=True)
     sizes = [16, 20, 24, 32, 40, 48, 64, 128, 256]
-    frames = [(simple if s <= 24 else detailed).resize((s, s), Image.LANCZOS) for s in sizes]
+    frames = [pixel_frame(s) if s in pixel_icons.ART else detailed.resize((s, s), Image.LANCZOS) for s in sizes]
     frames[-1].save(os.path.join(OUT, "app.ico"), format="ICO", sizes=[(s, s) for s in sizes],
                     append_images=frames[:-1])
     # Preview sheet: 256, 48, 32, 24, 16 on dark and light backgrounds.

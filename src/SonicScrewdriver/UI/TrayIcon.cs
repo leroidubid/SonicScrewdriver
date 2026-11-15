@@ -278,7 +278,11 @@ public sealed class TrayIcon : IDisposable
         }
     }
 
-    /// <summary>A red copy of an icon (same shape and shading, red hue), used while competitive mode is on.</summary>
+    /// <summary>
+    /// A red copy of an icon, used while competitive mode is on. Only the colored parts (the blue emitter and the sound
+    /// arcs) turn red; the steel and grip stay neutral, so the pixel-art shapes stay as readable as in the normal icon
+    /// and the white hot core of the emitter stays white.
+    /// </summary>
     private static IntPtr Tint(IntPtr icon)
     {
         try
@@ -291,9 +295,14 @@ public sealed class TrayIcon : IDisposable
             for (int i = 0; i < px.Length; i += 4)
             {
                 int a = px[i + 3];
-                int gray = (px[i] + px[i + 1] + px[i + 2]) / 3;
-                px[i + 2] = (byte)Math.Min(a, gray * 3 / 2 + a / 3); // red, kept within alpha (premultiplied)
-                px[i] = px[i + 1] = (byte)(gray / 5);
+                if (a == 0) continue;
+                int b = px[i] * 255 / a, g = px[i + 1] * 255 / a, r = px[i + 2] * 255 / a; // back to straight alpha
+                int sat = Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b));
+                double k = Math.Clamp((sat - 30) / 60.0, 0, 1); // 0 for grays, 1 for the saturated blue
+                int nr = (int)(r + (b - r) * k), ng = (int)(g + (g / 4 - g) * k), nb = (int)(b + (r * 3 / 5 - b) * k);
+                px[i + 2] = (byte)(nr * a / 255);
+                px[i + 1] = (byte)(ng * a / 255);
+                px[i] = (byte)(nb * a / 255);
             }
             var color = CreateBitmap(w, h, 1, 32, px);
             var mask = CreateBitmap(w, h, 1, 1, new byte[(w + 15) / 16 * 2 * h]);
