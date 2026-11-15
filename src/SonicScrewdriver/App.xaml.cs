@@ -239,7 +239,7 @@ public partial class App : Application
     {
         if (_flyout is null)
         {
-            _flyout = new FlyoutWindow(_audio);
+            _flyout = new FlyoutWindow(_audio, () => _settings, () => { TrySave(); });
             _flyout.IsVisibleChanged += (_, e) =>
             {
                 if (e.NewValue is false)
@@ -270,6 +270,8 @@ public partial class App : Application
             if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open
             var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
             if (_settingsWindow!.CompetitiveModeEdited) _autoMode.UserChanged(s.CompetitiveMode);
+            s.PinnedApps = _settings.PinnedApps; // changed from the mixer, not from this window
+            s.HiddenApps = _settings.HiddenApps.Except(_settingsWindow.ShownAgain, StringComparer.OrdinalIgnoreCase).ToList();
             _settings = s;
             RebuildDecider();
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;

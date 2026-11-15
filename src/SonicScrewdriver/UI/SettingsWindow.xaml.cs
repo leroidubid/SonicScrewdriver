@@ -17,6 +17,10 @@ public partial class SettingsWindow : Window
     private readonly bool _initialCompetitive;
     private readonly Func<Hotkey, bool>? _hotkeyAvailable;
     private readonly List<FreeRow> _freeRows = new();
+    private readonly ObservableCollection<string> _hidden;
+
+    /// <summary>Apps the user chose to show again in the mixer (applied on Save).</summary>
+    public List<string> ShownAgain { get; } = new();
 
     public event Action<AppSettings>? Saved;
 
@@ -67,6 +71,10 @@ public partial class SettingsWindow : Window
         BuildRemapRows(current);
         foreach (var f in current.FreeHotkeys) AddFreeRow(f);
         ModeHotkeyBox.Validator = chord => FreeChordConflict(chord, null);
+        _hidden = new ObservableCollection<string>(current.HiddenApps);
+        _hidden.CollectionChanged += (_, _) => HiddenEmpty.Visibility = _hidden.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        HiddenList.ItemsSource = _hidden;
+        HiddenEmpty.Visibility = _hidden.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
@@ -183,6 +191,13 @@ public partial class SettingsWindow : Window
         if (self is not null && Hotkey.TryParse(chord, out var h) && _hotkeyAvailable?.Invoke(h) == false)
             return $"{chord} is already used by Windows or another program. Choose another combination.";
         return null;
+    }
+
+    private void ShowAgain_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string exe }) return;
+        _hidden.Remove(exe);
+        ShownAgain.Add(exe);
     }
 
     private void ClearModeHotkey_Click(object sender, RoutedEventArgs e)

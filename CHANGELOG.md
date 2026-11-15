@@ -34,6 +34,10 @@ First public release.
 - **On-screen display:** shows the app icon, its name and the new level, without stealing focus.
 - **Device control:** set the default output device from the mixer, and route an app to another
   output (right-click it in the mixer).
+- **Pin or hide apps:** right-click an app in the mixer for **Pin to top** (pinned apps stay first in their device
+  list, in a stable order) or **Hide from the mixer**. Hidden apps are not listed but keep working with shortcuts, and
+  their volume is not touched. Both lists are stored as exe names in the settings file (validated on load), and a
+  **Hidden apps** card in the settings window lists the hidden apps with a **Show again** button.
 - **Mouse wheel:** over the tray icon for the master volume, and over a mixer row for that app.
 - **Tray tooltip and menu:** both show the current output device and the configured shortcuts. The right-click menu is
   a flyout in the same design as the mixer (Settings, Competitive mode, Quit) instead of the native Win32 menu: it opens

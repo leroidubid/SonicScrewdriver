@@ -32,6 +32,12 @@ public sealed class AppSettings
     /// <summary>Shortcuts on any key combination (not only media keys), registered with RegisterHotKey. Off in competitive mode.</summary>
     public List<FreeHotkey> FreeHotkeys { get; set; } = new();
 
+    /// <summary>Exe names pinned to the top of each device list in the mixer, in pin order.</summary>
+    public List<string> PinnedApps { get; set; } = new();
+
+    /// <summary>Exe names not listed in the mixer (they keep working with shortcuts; their volume is not touched).</summary>
+    public List<string> HiddenApps { get; set; } = new();
+
     /// <summary>Output devices included in the cycle (MMDevice IDs); empty means every active device.</summary>
     public List<string> CycleDeviceIds { get; set; } = new();
 
@@ -93,5 +99,18 @@ public sealed class AppSettings
                 errors.Add($"{label}: {chord} is already used by another shortcut.");
         }
         return errors;
+    }
+
+    /// <summary>"Spotify" / " SPOTIFY.EXE " → "spotify.exe", no empty entries, no duplicates; order kept.</summary>
+    public static List<string> SanitizeExeList(IEnumerable<string>? exes)
+    {
+        var seen = new HashSet<string>();
+        var result = new List<string>();
+        foreach (var e in exes ?? Array.Empty<string>())
+        {
+            var exe = Target.NormalizeExe(e ?? "");
+            if (exe.Length > 0 && seen.Add(exe)) result.Add(exe);
+        }
+        return result;
     }
 }

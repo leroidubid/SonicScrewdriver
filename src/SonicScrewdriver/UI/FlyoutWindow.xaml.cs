@@ -5,12 +5,15 @@ using System.Windows.Interop;
 using System.Windows.Threading;
 using SonicScrewdriver.Audio;
 using SonicScrewdriver.Interop;
+using SonicScrewdriver.Settings;
 
 namespace SonicScrewdriver.UI;
 
 public partial class FlyoutWindow : Window
 {
     private readonly IAudioSessionService _audio;
+    private readonly Func<AppSettings> _settings;
+    private readonly Action _save;
     // Audio events come in bursts (one per session/channel): throttle them to one refresh per 60 ms.
     private readonly DispatcherTimer _refreshDebounce = new() { Interval = TimeSpan.FromMilliseconds(60) };
     private DateTime _hiddenAt = DateTime.MinValue;
@@ -18,9 +21,11 @@ public partial class FlyoutWindow : Window
 
     public ObservableCollection<DeviceViewModel> Devices { get; } = new();
 
-    public FlyoutWindow(IAudioSessionService audio)
+    public FlyoutWindow(IAudioSessionService audio, Func<AppSettings> settings, Action save)
     {
         _audio = audio;
+        _settings = settings;
+        _save = save;
         InitializeComponent();
         DataContext = this;
 
@@ -87,15 +92,17 @@ public partial class FlyoutWindow : Window
     private void Refresh()
     {
         var live = _audio.GetDevices();
+        var pinned = _settings().PinnedApps;
+        var hidden = _settings().HiddenApps;
         for (var i = Devices.Count - 1; i >= 0; i--)
             if (!live.Any(d => d.Id == Devices[i].Id)) Devices.RemoveAt(i);
         for (var i = 0; i < live.Count; i++)
         {
             var index = IndexOf(live[i].Id);
-            if (index < 0) Devices.Insert(Math.Min(i, Devices.Count), new DeviceViewModel(_audio, live[i]));
+            if (index < 0) Devices.Insert(Math.Min(i, Devices.Count), new DeviceViewModel(_audio, live[i], pinned, hidden));
             else
             {
-                Devices[index].Sync(live[i]);
+                Devices[index].Sync(live[i], pinned, hidden);
                 if (index != i && i < Devices.Count) Devices.Move(index, i); // default device first
             }
         }
@@ -122,6 +129,15 @@ public partial class FlyoutWindow : Window
         var pids = _audio.GetProcessIds(app.ExeName);
         var routed = pids.Select(AudioPolicy.GetAppDevice).FirstOrDefault(id => id is not null);
 
+        var settings = _settings();
+        var isPinned = settings.PinnedApps.Contains(app.ExeName, StringComparer.OrdinalIgnoreCase);
+        var pin = new MenuItem { Header = isPinned ? "Unpin from the top" : "Pin to top" };
+        pin.Click += (_, _) => SetPinned(app.ExeName, !isPinned);
+        menu.Items.Add(pin);
+        var hide = new MenuItem { Header = "Hide from the mixer", ToolTip = "It keeps working with shortcuts. Show it again in Settings." };
+        hide.Click += (_, _) => HideApp(app.ExeName);
+        menu.Items.Add(hide);
+        menu.Items.Add(new Separator());
         menu.Items.Add(new MenuItem { Header = $"Play {app.DisplayName} on", IsEnabled = false });
         var follow = new MenuItem { Header = "Default device", IsCheckable = true, IsChecked = routed is null };
         follow.Click += (_, _) => Route(pids, null);
@@ -134,6 +150,24 @@ public partial class FlyoutWindow : Window
             item.Click += (_, _) => Route(pids, id);
             menu.Items.Add(item);
         }
+    }
+
+    private void SetPinned(string exe, bool pinned)
+    {
+        var list = _settings().PinnedApps;
+        list.RemoveAll(p => string.Equals(p, exe, StringComparison.OrdinalIgnoreCase));
+        if (pinned) list.Add(Bindings.Target.NormalizeExe(exe));
+        _save();
+        Refresh();
+    }
+
+    private void HideApp(string exe)
+    {
+        var s = _settings();
+        s.PinnedApps.RemoveAll(p => string.Equals(p, exe, StringComparison.OrdinalIgnoreCase));
+        if (!s.HiddenApps.Contains(exe, StringComparer.OrdinalIgnoreCase)) s.HiddenApps.Add(Bindings.Target.NormalizeExe(exe));
+        _save();
+        Refresh();
     }
 
     private static void Route(IReadOnlyList<int> pids, string? deviceId)

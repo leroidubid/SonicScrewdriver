@@ -44,6 +44,8 @@ public sealed class SettingsStore
             s.CycleDeviceIds ??= new List<string>();
             s.AutoPrograms = SanitizePrograms(s.AutoPrograms);
             s.KeyRemaps = SanitizeRemaps(s.KeyRemaps);
+            s.HiddenApps = AppSettings.SanitizeExeList(s.HiddenApps);
+            s.PinnedApps = AppSettings.SanitizeExeList(s.PinnedApps).Where(p => !s.HiddenApps.Contains(p)).ToList();
             s.FreeHotkeys = SanitizeFreeHotkeys(s.FreeHotkeys, s.CompetitiveHotkey);
             s.CompetitiveHotkey =Input.Hotkey.TryParse(s.CompetitiveHotkey, out var hotkey) ? hotkey.ToString() : null;
             return s;

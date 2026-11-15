@@ -131,6 +131,28 @@
 
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
+                        <TextBlock Text="Hidden apps" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Apps hidden from the mixer (right-click an app there). They keep working with shortcuts and their volume is not touched."/>
+                        <TextBlock x:Name="HiddenEmpty" Style="{StaticResource Hint}" Text="No hidden app." Margin="0,8,0,0"/>
+                        <ItemsControl x:Name="HiddenList" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource RowBrush}" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Show again" Style="{StaticResource FlatButton}" Padding="14,6"
+                                                    Click="ShowAgain_Click" Tag="{Binding}"/>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
                         <TextBlock Text="Competitive mode" Style="{StaticResource CardTitle}"/>
                         <CheckBox x:Name="CompetitiveBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
                                   Checked="Competitive_Changed" Unchecked="Competitive_Changed" Content="Anti-cheat friendly"/>

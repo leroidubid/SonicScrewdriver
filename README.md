@@ -36,6 +36,9 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 - **On-screen display.** A small, non-intrusive overlay shows the app icon, its name and the new level.
 - **Device control.** Set the default output from the mixer, or right-click an app to send it to
   another output.
+- **Pin or hide apps.** Right-click an app in the mixer to **pin it to the top** of its device list (pinned apps keep
+  a stable order) or **hide it from the mixer**. A hidden app keeps working with your shortcuts and its volume is not
+  touched; the **Hidden apps** card in the settings lists them with a **Show again** button.
 - **Mouse wheel.** Scroll over the tray icon to change the master volume, or over a mixer row to
   change that app.
 - **At a glance.** The tray tooltip and the right-click menu show the current output device and your shortcuts. The
@@ -56,6 +59,7 @@ Right-click the tray icon, then **Settings**. The window has one card per topic:
   and a step. Duplicate combinations and combinations that Windows or another program already owns are refused.
 - **Output devices in the cycle**, and **Media keys** to choose which physical keys act as Vol+, Vol-, Mute, Play,
   Next and Previous.
+- **Hidden apps**: the apps hidden from the mixer, each with a **Show again** button.
 - **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
   automatically. While it is on, the shortcut options are greyed out.
 - **General**: Start with Windows.
