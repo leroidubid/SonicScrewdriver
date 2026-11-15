@@ -29,7 +29,9 @@ First public release.
 - **Device control:** set the default output device from the mixer, and route an app to another
   output (right-click it in the mixer).
 - **Mouse wheel:** over the tray icon for the master volume, and over a mixer row for that app.
-- **Tray tooltip and menu:** both show the current output device and the configured shortcuts.
+- **Tray tooltip and menu:** both show the current output device and the configured shortcuts. The right-click menu is
+  a flyout in the same design as the mixer (Settings, Competitive mode, Quit) instead of the native Win32 menu: it opens
+  inside the work area next to the taskbar, closes on Escape or an outside click, and works with the arrow keys.
 - **Settings window:** apps are listed as "Name (exe)", with the output-device cycle list and the
   Start with Windows option. Settings are saved to `%APPDATA%\SonicScrewdriver\settings.json`;
   hand-edited files are sanitized on load and corrupt files are backed up.

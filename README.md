@@ -32,7 +32,9 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   another output.
 - **Mouse wheel.** Scroll over the tray icon to change the master volume, or over a mixer row to
   change that app.
-- **At a glance.** The tray tooltip and menu show the current output device and your shortcuts.
+- **At a glance.** The tray tooltip and the right-click menu show the current output device and your shortcuts. The
+  menu is drawn like the mixer (same theme, above the taskbar, closes on Escape or a click elsewhere, usable with the
+  arrow keys) and holds Settings, the Competitive mode switch and Quit.
 - **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
   lookups) for online games, with an optional shortcut to flip it. See [Games and anti-cheat](#games-and-anti-cheat).
 - **Light.** Around 20 MB of RAM and no CPU at idle; everything is event driven (the only timer is the optional
@@ -53,7 +55,7 @@ the media keys and act on the app you choose.
    - `SonicScrewdriver-Setup-x.y.z.exe`: per-user install, no admin rights, Start menu shortcut,
      optional start with Windows, clean uninstall;
    - or `SonicScrewdriver.exe`: portable, just run it.
-3. Right-click the tray icon, choose **Shortcut settings**, and add your shortcuts.
+3. Right-click the tray icon, choose **Settings**, and add your shortcuts.
 
 Windows SmartScreen may warn on first run because the files are not code-signed:
 click **More info**, then **Run anyway**.
@@ -79,7 +81,7 @@ memory. Even so, anti-cheat systems are opaque, and a global keyboard hook can l
 compatibility cannot be guaranteed.
 
 For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlEye), turn on **Competitive mode**
-(tray menu, or Shortcut settings) or quit the app first. In that mode:
+(tray menu, or Settings) or quit the app first. In that mode:
 
 | Switched off | What you lose |
 |---|---|

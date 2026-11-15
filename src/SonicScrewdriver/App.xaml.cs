@@ -183,6 +183,7 @@ public partial class App : Application
     private void RegisterModeHotkey()
     {
         Hotkey? hotkey = Hotkey.TryParse(_settings.CompetitiveHotkey, out var h) ? h : null;
+        _tray!.ModeHotkeyText = hotkey?.ToString();
         if (!_modeHotkey!.Register(hotkey))
             _tray?.Notify("Sonic Screwdriver", $"The shortcut {hotkey} for competitive mode is already used by another program.");
     }

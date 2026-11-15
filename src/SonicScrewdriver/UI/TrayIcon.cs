@@ -8,7 +8,7 @@ using System.Windows.Threading;
 namespace SonicScrewdriver.UI;
 
 /// <summary>
-/// Native notification-area icon (Shell_NotifyIcon + Win32 menu), without WinForms.
+/// Native notification-area icon (Shell_NotifyIcon, with a WPF menu window), without WinForms.
 /// The mouse wheel over the icon is read through Raw Input, registered only while the cursor
 /// hovers the icon, so it costs nothing the rest of the time.
 /// </summary>
@@ -18,7 +18,6 @@ public sealed class TrayIcon : IDisposable
     private const int WM_INPUT = 0x00FF;
     private const int WM_MOUSEMOVE = 0x0200, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
     private const uint IconId = 1;
-    private const int CmdMixer = 1, CmdSettings = 2, CmdCompetitive = 3, CmdExit = 4;
 
     private readonly HwndSource _window;
     private readonly IntPtr _hIcon;
@@ -32,9 +31,13 @@ public sealed class TrayIcon : IDisposable
     private string _tip = "Sonic Screwdriver";
     private int _wheelRemainder;
     private uint _lastClickTick;
+    private TrayMenuWindow? _menu;
 
     /// <summary>Name of the current default output device, shown at the top of the menu.</summary>
     public Func<string?>? DefaultDeviceName { get; set; }
+
+    /// <summary>The competitive-mode shortcut, shown next to its menu entry (null when none).</summary>
+    public string? ModeHotkeyText { get; set; }
 
     public event EventHandler? OpenFlyoutRequested;
     public event EventHandler? OpenSettingsRequested;
@@ -165,47 +168,24 @@ public sealed class TrayIcon : IDisposable
         return IntPtr.Zero;
     }
 
+    /// <summary>Right-click: the menu is a WPF window in the style of the mixer flyout, created on first use.</summary>
     private void ShowMenu()
     {
-        var menu = CreatePopupMenu();
-        try
+        if (_menu is null)
         {
-            var device = DefaultDeviceName?.Invoke();
-            AppendMenu(menu, MF_STRING | MF_GRAYED, 0, "Output: " + (device ?? "none"));
-            AppendMenu(menu, MF_SEPARATOR, 0, null);
-            var lines = ActiveLines;
-            foreach (var line in lines) AppendMenu(menu, MF_STRING | MF_GRAYED, 0, line);
-            if (lines.Count > 0) AppendMenu(menu, MF_SEPARATOR, 0, null);
-            AppendMenu(menu, MF_STRING, CmdMixer, "Mixer");
-            AppendMenu(menu, MF_STRING, CmdSettings, "Shortcut settings…");
-            AppendMenu(menu, MF_STRING | (_competitive ? MF_CHECKED : 0), CmdCompetitive, "Competitive mode");
-            AppendMenu(menu, MF_SEPARATOR, 0, null);
-            AppendMenu(menu, MF_STRING, CmdExit, "Exit");
-            GetCursorPos(out var pt);
-            var flags = TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON;
-            // The cursor sits on the taskbar: anchor the menu to the work-area edge so it opens
-            // above (or beside) the taskbar instead of behind it.
-            var monitorInfo = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
-            if (GetMonitorInfo(MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), ref monitorInfo))
-            {
-                var work = monitorInfo.rcWork;
-                if (pt.Y >= work.Bottom) { pt.Y = work.Bottom; flags |= TPM_BOTTOMALIGN; }
-                else if (pt.Y < work.Top) pt.Y = work.Top;
-                if (pt.X >= work.Right) { pt.X = work.Right; flags |= TPM_RIGHTALIGN; }
-                else if (pt.X < work.Left) pt.X = work.Left;
-            }
-            SetForegroundWindow(_window.Handle); // required so the menu closes on an outside click
-            var cmd = TrackPopupMenuEx(menu, flags, pt.X, pt.Y, _window.Handle, IntPtr.Zero);
-            PostMessage(_window.Handle, 0, IntPtr.Zero, IntPtr.Zero); // WM_NULL, per TrackPopupMenu docs
-            switch (cmd)
-            {
-                case CmdMixer: OpenFlyoutRequested?.Invoke(this, EventArgs.Empty); break;
-                case CmdSettings: OpenSettingsRequested?.Invoke(this, EventArgs.Empty); break;
-                case CmdCompetitive: CompetitiveModeToggled?.Invoke(this, !_competitive); break;
-                case CmdExit: ExitRequested?.Invoke(this, EventArgs.Empty); break;
-            }
+            _menu = new TrayMenuWindow();
+            _menu.SettingsRequested += (_, _) => OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+            _menu.CompetitiveToggleRequested += (_, _) => CompetitiveModeToggled?.Invoke(this, !_competitive);
+            _menu.QuitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
         }
-        finally { DestroyMenu(menu); }
+        GetCursorPos(out var pt);
+        // The cursor sits on the taskbar: the menu is placed inside the work area of that monitor.
+        var work = new Rect(pt.X - 1, pt.Y - 1, 2, 2);
+        var monitorInfo = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
+        if (GetMonitorInfo(MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), ref monitorInfo))
+            work = new Rect(monitorInfo.rcWork.Left, monitorInfo.rcWork.Top,
+                monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
+        _menu.ShowAt(new Point(pt.X, pt.Y), work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText);
     }
 
     // --- Mouse wheel over the icon -------------------------------------------------------------
@@ -348,8 +328,6 @@ public sealed class TrayIcon : IDisposable
     private const uint NIM_ADD = 0, NIM_MODIFY = 1, NIM_DELETE = 2;
     private const uint NIF_MESSAGE = 0x1, NIF_ICON = 0x2, NIF_TIP = 0x4, NIF_INFO = 0x10;
     private const uint NIIF_INFO = 0x1;
-    private const uint MF_STRING = 0x0, MF_GRAYED = 0x1, MF_CHECKED = 0x8, MF_SEPARATOR = 0x800;
-    private const uint TPM_RIGHTBUTTON = 0x2, TPM_RIGHTALIGN = 0x8, TPM_BOTTOMALIGN = 0x20, TPM_NONOTIFY = 0x80, TPM_RETURNCMD = 0x100;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -446,9 +424,6 @@ public sealed class TrayIcon : IDisposable
     private static extern uint RegisterWindowMessage(string message);
 
     [DllImport("user32.dll")]
-    private static extern IntPtr CreatePopupMenu();
-
-    [DllImport("user32.dll")]
     private static extern uint GetDoubleClickTime();
 
     private const int SM_CXSMICON = 49, SM_CYSMICON = 50;
@@ -466,26 +441,7 @@ public sealed class TrayIcon : IDisposable
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool PostMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AppendMenu(IntPtr menu, uint flags, int id, string? text);
-
-    [DllImport("user32.dll")]
-    private static extern int TrackPopupMenuEx(IntPtr menu, uint flags, int x, int y, IntPtr hwnd, IntPtr tpm);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyMenu(IntPtr menu);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out POINT point);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetForegroundWindow(IntPtr hwnd);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
