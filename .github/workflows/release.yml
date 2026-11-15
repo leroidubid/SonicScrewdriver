@@ -1,8 +1,8 @@
 name: Release
 
 # Push a tag like v1.1.0: builds the portable exe and the installer, then attaches both to the
-# GitHub release (created from CHANGELOG.md if it does not exist yet), with SHA256 checksums and a
-# ready-to-submit winget manifest.
+# GitHub release (created from CHANGELOG.md if it does not exist yet), with SHA256 checksums. The winget
+# manifest for the release is kept as a workflow artifact.
 on:
   push:
     tags: ['v*']
@@ -53,7 +53,13 @@ jobs:
             "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
           } | Set-Content publish/SHA256SUMS.txt
           ./installer/make-winget-manifest.ps1 -Version $v -Setup $setup -Repo "${{ github.repository }}" -OutDir "publish/winget-$v"
-          Compress-Archive "publish/winget-$v/*" "publish/winget-manifest-$v.zip" -Force
+
+      # Not a release asset (winget only needs the installer URL and hash): kept on the run for submission.
+      - name: Keep winget manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifest-${{ steps.v.outputs.version }}
+          path: publish/winget-${{ steps.v.outputs.version }}
 
       - name: Release
         shell: bash
@@ -61,7 +67,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.v.outputs.version }}"
-          FILES=("publish/SonicScrewdriver.exe" "publish/SonicScrewdriver-Setup-${VERSION}.exe" "publish/SHA256SUMS.txt" "publish/winget-manifest-${VERSION}.zip")
+          FILES=("publish/SonicScrewdriver.exe" "publish/SonicScrewdriver-Setup-${VERSION}.exe" "publish/SHA256SUMS.txt")
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${FILES[@]}" --clobber
           else
