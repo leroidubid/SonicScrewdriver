@@ -1,6 +1,6 @@
 """Generates src/SonicScrewdriver/Assets/app.ico (16-256 px) and a 256 px PNG preview.
 
-A stylized sonic screwdriver lying diagonally, glowing blue emitter, sound waves.
+A stylized sonic screwdriver lying diagonally, glowing green emitter, sound waves.
 The tray sizes (16, 20, 24, 32 px) are hand-placed pixel art (tools/pixel_icons.py); from 40 px up the smooth
 drawing below is scaled down.
 Run: python tools/make_icon.py
@@ -15,8 +15,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "SonicScrewdriver", "Assets")
 S = 1024  # supersampled canvas
 
-BLUE = (64, 170, 255, 255)
-BLUE_GLOW = (40, 140, 255, 255)
+BLUE = (90, 225, 150, 255)
+BLUE_GLOW = (50, 200, 120, 255)
 WHITE = (235, 245, 255, 255)
 STEEL = (178, 186, 198, 255)
 STEEL_DARK = (110, 118, 132, 255)

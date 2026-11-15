@@ -2,7 +2,7 @@
 
 The tray draws the icon at 16 px at 100 % scale, 20 px at 125 %, 24 px at 150 %, 32 px at 200 %. At those sizes a
 downscaled drawing turns to mush, so each size is drawn pixel by pixel here: a sonic screwdriver on the diagonal,
-a glowing blue emitter at the top right, and sound arcs. make_icon.py puts these frames in app.ico next to the
+a glowing green emitter at the top right, and sound arcs. make_icon.py puts these frames in app.ico next to the
 smooth drawing used from 40 px up.
 
 One character per pixel. The rows of each size must be exactly size x size.
@@ -16,8 +16,8 @@ PALETTE = {
     "H": (112, 120, 136, 255),   # collar
     "S": (196, 204, 216, 255),   # steel
     "W": (240, 248, 255, 255),   # hot core
-    "B": (64, 170, 255, 255),    # emitter / sound
-    "D": (30, 112, 214, 255),    # emitter rim / sound shade
+    "B": (90, 225, 150, 255),    # emitter / sound
+    "D": (28, 150, 90, 255),    # emitter rim / sound shade
 }
 
 ART = {
