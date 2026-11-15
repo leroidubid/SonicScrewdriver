@@ -58,7 +58,7 @@ jobs:
 
       # Not a release asset (winget only needs the installer URL and hash): kept on the run for submission.
       - name: Keep winget manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: winget-manifest-${{ steps.v.outputs.version }}
           path: publish/winget-${{ steps.v.outputs.version }}
