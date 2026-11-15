@@ -32,6 +32,18 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   lookups) for online games. See [Games and anti-cheat](#games-and-anti-cheat).
 - **Light.** Around 20 MB of RAM and no CPU at idle; no polling, everything is event driven.
 
+## Settings
+
+Right-click the tray icon, then **Shortcut settings**. Each row is a modifier combination, the app it controls
+(a specific app, the foreground app or the output devices) and the volume step. The same window picks the output
+devices used by the cycle shortcut, the Start with Windows option and **Competitive mode**, which greys out
+everything it turns off.
+
+<p align="center">
+  <img src="docs/settings.png" alt="The settings window with three shortcuts" width="400">&nbsp;&nbsp;
+  <img src="docs/settings-competitive.png" alt="The settings window with Competitive mode on: the shortcut options are greyed out" width="400">
+</p>
+
 ## Why
 
 I wanted to change the volume of several apps quickly while a game was running full screen: turn Discord up,
@@ -97,6 +109,12 @@ lowers the risk but does not remove it: quitting the app is the safest choice.
   ```bash
   gh attestation verify SonicScrewdriver-Setup-x.y.z.exe --repo leroidubid/SonicScrewdriver
   ```
+
+- **Antivirus false positives.** The files are not code-signed, and a few machine-learning engines on VirusTotal
+  (for example SecureAge and Acronis) flagged an early build as suspicious, while Microsoft Defender and the
+  other engines found nothing. These engines react to the API calls any keyboard-shortcut tool needs (a keyboard
+  hook, key injection, start with Windows), not to anything harmful. To check a download yourself, compare its
+  hash with `SHA256SUMS.txt`, verify the attestation above, or read and build the source.
 
 ## Build
 

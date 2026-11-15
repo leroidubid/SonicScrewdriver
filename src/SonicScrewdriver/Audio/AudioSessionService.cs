@@ -16,6 +16,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     private List<DeviceTracker> _devices = new();
     private string? _defaultId;
     private volatile bool _dirty = true;
+    private volatile bool _full;   // true: drop every tracker; false: keep the ones whose device is still there
 
     public event EventHandler? SessionsChanged;
     public event EventHandler? VolumesChanged;
@@ -42,10 +43,16 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         }
     }
 
+    /// <summary>
+    /// Brings the trackers in line with the active devices. Incremental: a device that is still there keeps its tracker
+    /// (and its sessions), only added and removed devices cost anything. <see cref="_full"/> forces a full rebuild.
+    /// </summary>
     private void Rebuild()
     {
-        foreach (var d in _devices) d.Dispose();
-        _devices = new List<DeviceTracker>();
+        var old = _full ? new List<DeviceTracker>() : _devices;
+        if (_full) foreach (var d in _devices) d.Dispose();
+        _full = false;
+        var kept = new List<DeviceTracker>();
         _defaultId = null;
         _dirty = false; // cleared first: a device event arriving during the rebuild sets it again
         try
@@ -59,11 +66,18 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
 
             foreach (var device in _enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
             {
-                try { _devices.Add(new DeviceTracker(device, RaiseSessionsChanged, RaiseVolumesChanged)); }
+                try
+                {
+                    var existing = old.FirstOrDefault(d => d.Id == device.ID);
+                    if (existing is not null) { kept.Add(existing); device.Dispose(); continue; }
+                    kept.Add(new DeviceTracker(device, RaiseSessionsChanged, RaiseVolumesChanged));
+                }
                 catch (Exception) { try { device.Dispose(); } catch (Exception) { } }
             }
         }
         catch (Exception) { _dirty = true; }
+        foreach (var d in old) if (!kept.Contains(d)) d.Dispose(); // unplugged devices
+        _devices = kept;
     }
 
     private DeviceTracker? DefaultDevice => Devices.FirstOrDefault(d => d.Id == _defaultId);
@@ -100,7 +114,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
                 var ep = d.Device.AudioEndpointVolume;
                 list.Add(new AudioDevice(d.Id, d.Name, d.Id == _defaultId, ep.MasterVolumeLevelScalar, ep.Mute, GroupApps(d.Snapshot())));
             }
-            catch (Exception) { _dirty = true; }
+            catch (Exception) { _dirty = true; _full = true; } // a broken tracker is rebuilt, not kept
         }
         return list.OrderByDescending(d => d.IsDefault).ThenBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
@@ -192,6 +206,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     /// </summary>
     public void Reset()
     {
+        _full = true;
         _dirty = true;
         _ = Devices;
         RaiseSessionsChanged();
@@ -259,10 +274,14 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
                 if (control.IsSystemSoundsSession || control.State == AudioSessionState.AudioSessionStateExpired) { control.Dispose(); return; }
                 var pid = (int)control.GetProcessID;
                 if (pid == 0) { control.Dispose(); return; }
+                string? instance = null;
+                try { instance = control.GetSessionInstanceIdentifier; } catch (Exception) { }
+                lock (_lock)
+                    if (instance is not null && _sessions.Any(s => s.InstanceId == instance)) { control.Dispose(); return; } // already tracked
                 process = System.Diagnostics.Process.GetProcessById(pid);
                 var exe = Bindings.Target.NormalizeExe(process.ProcessName);
                 ProcessInfo.Remember(pid, exe);
-                var entry = new SessionEntry(control, process, exe, pid, _sessionsChanged, _volumesChanged);
+                var entry = new SessionEntry(control, process, exe, pid, instance, _sessionsChanged, _volumesChanged);
                 control.RegisterEventClient(entry);
                 lock (_lock) _sessions.Add(entry);
             }
@@ -298,6 +317,9 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
             List<SessionEntry> all;
             lock (_lock) { all = _sessions.ToList(); _sessions.Clear(); _pending.Clear(); }
             foreach (var s in all) s.Release();
+            // Each COM object on its own: one failure (typical right after an unplug) must not leak the others.
+            try { _manager.Dispose(); } catch (Exception) { }
+            try { _endpoint.Dispose(); } catch (Exception) { }
             try { Device.Dispose(); } catch (Exception) { }
         }
     }
@@ -313,6 +335,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         public AudioSessionControl Control { get; }
         public string Exe { get; }
         public int Pid { get; }
+        public string? InstanceId { get; }
         public volatile bool Ended;
 
         public bool ProcessExited
@@ -321,9 +344,10 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
             get { try { return ProcessInfo.Minimal ? !ProcessInfo.IsRunning(Pid) : _process.HasExited; } catch (Exception) { return true; } }
         }
 
-        public SessionEntry(AudioSessionControl control, System.Diagnostics.Process process, string exe, int pid, Action sessionsChanged, Action volumesChanged)
+        public SessionEntry(AudioSessionControl control, System.Diagnostics.Process process, string exe, int pid, string? instanceId, Action sessionsChanged, Action volumesChanged)
         {
             Control = control;
+            InstanceId = instanceId;
             _process = process;
             Exe = exe;
             Pid = pid;
@@ -360,9 +384,11 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         {
             if (flow == DataFlow.Render && role == Role.Multimedia) _onChange();
         }
-        public void OnDeviceStateChanged(string deviceId, DeviceState newState) => _onChange();
-        public void OnDeviceAdded(string pwstrDeviceId) => _onChange();
-        public void OnDeviceRemoved(string deviceId) => _onChange();
+        // Microphones and other capture endpoints ("{0.0.1.x}") never show in the mixer: ignore their events.
+        private static bool IsCapture(string id) => id.StartsWith("{0.0.1.", StringComparison.Ordinal);
+        public void OnDeviceStateChanged(string deviceId, DeviceState newState) { if (!IsCapture(deviceId)) _onChange(); }
+        public void OnDeviceAdded(string pwstrDeviceId) { if (!IsCapture(pwstrDeviceId)) _onChange(); }
+        public void OnDeviceRemoved(string deviceId) { if (!IsCapture(deviceId)) _onChange(); }
         public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
     }
 }

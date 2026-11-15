@@ -47,6 +47,8 @@ First public release.
 - **Startup:** a startup failure is reported instead of leaving an invisible process; a locked
   settings file falls back to defaults; save errors are reported.
 - **Footprint:** about 20 MB of RAM and no CPU use at idle.
+- **Mixer:** changing the slider of a muted app unmutes it, a slider being dragged is no longer moved by refreshes, plugging a device only touches that device, microphones are ignored, and an app session is never listed twice.
+- **Play/Pause/Next:** when an app has several media sessions (a browser and its installed web apps), the one that is playing is used.
 - **Minimal process access:** the app no longer opens other programs with the right to read their memory (which
   anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
   from the file on disk.

@@ -16,4 +16,13 @@ public class MediaSessionMatcherTests
     [InlineData("NOTAHEXSTRING123", "firefox.exe", false)]
     public void Matches(string aumid, string exe, bool expected)
         => Assert.Equal(expected, MediaSessionMatcher.Matches(aumid, exe));
+
+    [Fact]
+    public void PreferPlaying_picks_the_playing_session_else_the_first()
+    {
+        var a = new object(); var b = new object();
+        Assert.Same(b, MediaSessionMatcher.PreferPlaying(new[] { a, b }, x => ReferenceEquals(x, b)));
+        Assert.Same(a, MediaSessionMatcher.PreferPlaying(new[] { a, b }, _ => false));
+        Assert.Null(MediaSessionMatcher.PreferPlaying(Array.Empty<object>(), _ => true));
+    }
 }

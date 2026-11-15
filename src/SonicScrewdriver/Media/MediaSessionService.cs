@@ -13,7 +13,9 @@ public sealed class MediaSessionService : IMediaSessionService
         try
         {
             _manager ??= await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            var session = _manager.GetSessions().FirstOrDefault(s => MediaSessionMatcher.Matches(s.SourceAppUserModelId, exe));
+            var session = MediaSessionMatcher.PreferPlaying(
+                _manager.GetSessions().Where(s => MediaSessionMatcher.Matches(s.SourceAppUserModelId, exe)),
+                s => { try { return s.GetPlaybackInfo().PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing; } catch (Exception) { return false; } });
             if (session is null) return MediaResult.NoSession;
             var ok = key switch
             {
