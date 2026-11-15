@@ -32,6 +32,9 @@ First public release.
 - **Installer:** per-user Inno Setup installer that needs no admin rights, with a Start menu
   shortcut, an optional start with Windows, a .NET 8 Desktop Runtime check and a clean uninstall.
   A portable single-file exe is also provided.
+- **Competitive mode:** one switch (tray menu or settings) turns off the keyboard hook, the on-screen display, the
+  mouse wheel on the tray icon and the lookups of other programs, so nothing can be mistaken for cheating software
+  by an anti-cheat. The options it turns off are greyed out in the settings window.
 
 ### Reliability
 
@@ -44,5 +47,8 @@ First public release.
 - **Startup:** a startup failure is reported instead of leaving an invisible process; a locked
   settings file falls back to defaults; save errors are reported.
 - **Footprint:** about 20 MB of RAM and no CPU use at idle.
+- **Minimal process access:** the app no longer opens other programs with the right to read their memory (which
+  anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
+  from the file on disk.
 
 [1.0.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.0.0

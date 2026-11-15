@@ -186,6 +186,17 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         return ok;
     }
 
+    /// <summary>
+    /// Drops every tracked session (and the process handles they hold) and lists them again. Used when competitive
+    /// mode is switched on or off, so names and icons are looked up, or not, accordingly.
+    /// </summary>
+    public void Reset()
+    {
+        _dirty = true;
+        _ = Devices;
+        RaiseSessionsChanged();
+    }
+
     public string GetDisplayName(string exe) => ProcessInfo.DisplayName(exe);
 
     public void Dispose()
@@ -306,7 +317,8 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
 
         public bool ProcessExited
         {
-            get { try { return _process.HasExited; } catch (Exception) { return true; } }
+            // HasExited opens the process; competitive mode asks the process list instead.
+            get { try { return ProcessInfo.Minimal ? !ProcessInfo.IsRunning(Pid) : _process.HasExited; } catch (Exception) { return true; } }
         }
 
         public SessionEntry(AudioSessionControl control, System.Diagnostics.Process process, string exe, int pid, Action sessionsChanged, Action volumesChanged)

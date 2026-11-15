@@ -18,13 +18,16 @@ public sealed class TrayIcon : IDisposable
     private const int WM_INPUT = 0x00FF;
     private const int WM_MOUSEMOVE = 0x0200, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205;
     private const uint IconId = 1;
-    private const int CmdMixer = 1, CmdSettings = 2, CmdExit = 4;
+    private const int CmdMixer = 1, CmdSettings = 2, CmdCompetitive = 3, CmdExit = 4;
 
     private readonly HwndSource _window;
     private readonly IntPtr _hIcon;
+    private IntPtr _hRedIcon; // competitive mode, built on first use
     private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private readonly DispatcherTimer _hoverTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private bool _wheelArmed;
+    private bool _wheelEnabled = true;
+    private bool _competitive;
     private IReadOnlyList<string> _shortcuts = Array.Empty<string>();
     private string _tip = "Sonic Screwdriver";
     private int _wheelRemainder;
@@ -36,6 +39,8 @@ public sealed class TrayIcon : IDisposable
     public event EventHandler? OpenFlyoutRequested;
     public event EventHandler? OpenSettingsRequested;
     public event EventHandler? ExitRequested;
+    /// <summary>The user toggled competitive mode from the menu; the argument is the new state.</summary>
+    public event EventHandler<bool>? CompetitiveModeToggled;
     /// <summary>Wheel over the icon: +1 per notch up, -1 per notch down.</summary>
     public event EventHandler<int>? WheelScrolled;
 
@@ -50,6 +55,32 @@ public sealed class TrayIcon : IDisposable
         AddIcon();
     }
 
+    /// <summary>False in competitive mode: the wheel over the icon is never read (no Raw Input registration).</summary>
+    public bool WheelEnabled
+    {
+        get => _wheelEnabled;
+        set
+        {
+            _wheelEnabled = value;
+            if (!value) DisarmWheel();
+        }
+    }
+
+    /// <summary>Competitive mode: the tooltip and the menu say the shortcuts are off, and the menu item is checked.</summary>
+    public void SetCompetitive(bool on)
+    {
+        _competitive = on;
+        UpdateTip();
+        if (on && _hRedIcon == IntPtr.Zero) _hRedIcon = Tint(_hIcon);
+        var data = NewData(NIF_ICON);
+        data.hIcon = on && _hRedIcon != IntPtr.Zero ? _hRedIcon : _hIcon;
+        Shell_NotifyIcon(NIM_MODIFY, ref data);
+    }
+
+    private const string CompetitiveLine = "Competitive mode: shortcuts off";
+
+    private IReadOnlyList<string> ActiveLines => _competitive ? new[] { CompetitiveLine } : _shortcuts;
+
     /// <summary>Shows the configured shortcuts in the tooltip and at the top of the menu.</summary>
     public void SetShortcuts(IReadOnlyList<string> lines)
     {
@@ -60,7 +91,7 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Refreshes the tooltip (the default device can change at any time); no-op when unchanged.</summary>
     private void UpdateTip()
     {
-        var tip = Bindings.ShortcutSummary.Tooltip(DefaultDeviceName?.Invoke(), _shortcuts);
+        var tip = Bindings.ShortcutSummary.Tooltip(DefaultDeviceName?.Invoke(), ActiveLines);
         if (tip == _tip) return;
         _tip = tip;
         var data = NewData(NIF_TIP);
@@ -81,7 +112,7 @@ public sealed class TrayIcon : IDisposable
     {
         var data = NewData(NIF_MESSAGE | NIF_ICON | NIF_TIP);
         data.uCallbackMessage = WM_APP_TRAY;
-        data.hIcon = _hIcon;
+        data.hIcon = _competitive && _hRedIcon != IntPtr.Zero ? _hRedIcon : _hIcon;
         data.szTip = _tip;
         Shell_NotifyIcon(NIM_ADD, ref data);
     }
@@ -142,10 +173,12 @@ public sealed class TrayIcon : IDisposable
             var device = DefaultDeviceName?.Invoke();
             AppendMenu(menu, MF_STRING | MF_GRAYED, 0, "Output: " + (device ?? "none"));
             AppendMenu(menu, MF_SEPARATOR, 0, null);
-            foreach (var line in _shortcuts) AppendMenu(menu, MF_STRING | MF_GRAYED, 0, line);
-            if (_shortcuts.Count > 0) AppendMenu(menu, MF_SEPARATOR, 0, null);
+            var lines = ActiveLines;
+            foreach (var line in lines) AppendMenu(menu, MF_STRING | MF_GRAYED, 0, line);
+            if (lines.Count > 0) AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdMixer, "Mixer");
             AppendMenu(menu, MF_STRING, CmdSettings, "Shortcut settings…");
+            AppendMenu(menu, MF_STRING | (_competitive ? MF_CHECKED : 0), CmdCompetitive, "Competitive mode");
             AppendMenu(menu, MF_SEPARATOR, 0, null);
             AppendMenu(menu, MF_STRING, CmdExit, "Exit");
             GetCursorPos(out var pt);
@@ -168,6 +201,7 @@ public sealed class TrayIcon : IDisposable
             {
                 case CmdMixer: OpenFlyoutRequested?.Invoke(this, EventArgs.Empty); break;
                 case CmdSettings: OpenSettingsRequested?.Invoke(this, EventArgs.Empty); break;
+                case CmdCompetitive: CompetitiveModeToggled?.Invoke(this, !_competitive); break;
                 case CmdExit: ExitRequested?.Invoke(this, EventArgs.Empty); break;
             }
         }
@@ -178,7 +212,7 @@ public sealed class TrayIcon : IDisposable
 
     private void ArmWheel()
     {
-        if (_wheelArmed) return;
+        if (_wheelArmed || !_wheelEnabled) return;
         var device = new RAWINPUTDEVICE { usUsagePage = 0x01, usUsage = 0x02, dwFlags = RIDEV_INPUTSINK, hwndTarget = _window.Handle };
         _wheelArmed = RegisterRawInputDevices(new[] { device }, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
         if (_wheelArmed) _hoverTimer.Start();
@@ -264,6 +298,39 @@ public sealed class TrayIcon : IDisposable
         }
     }
 
+    /// <summary>A red copy of an icon (same shape and shading, red hue), used while competitive mode is on.</summary>
+    private static IntPtr Tint(IntPtr icon)
+    {
+        try
+        {
+            var src = Imaging.CreateBitmapSourceFromHIcon(icon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            var bmp = new FormatConvertedBitmap(src, PixelFormats.Pbgra32, null, 0);
+            int w = bmp.PixelWidth, h = bmp.PixelHeight;
+            var px = new byte[w * h * 4];
+            bmp.CopyPixels(px, w * 4, 0);
+            for (int i = 0; i < px.Length; i += 4)
+            {
+                int a = px[i + 3];
+                int gray = (px[i] + px[i + 1] + px[i + 2]) / 3;
+                px[i + 2] = (byte)Math.Min(a, gray * 3 / 2 + a / 3); // red, kept within alpha (premultiplied)
+                px[i] = px[i + 1] = (byte)(gray / 5);
+            }
+            var color = CreateBitmap(w, h, 1, 32, px);
+            var mask = CreateBitmap(w, h, 1, 1, new byte[(w + 15) / 16 * 2 * h]);
+            try
+            {
+                var info = new ICONINFO { fIcon = true, hbmColor = color, hbmMask = mask };
+                return CreateIconIndirect(ref info);
+            }
+            finally
+            {
+                DeleteObject(color);
+                DeleteObject(mask);
+            }
+        }
+        catch { return IntPtr.Zero; }
+    }
+
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
 
     public void Dispose()
@@ -272,6 +339,7 @@ public sealed class TrayIcon : IDisposable
         var data = NewData(0);
         Shell_NotifyIcon(NIM_DELETE, ref data);
         DestroyIcon(_hIcon);
+        if (_hRedIcon != IntPtr.Zero) DestroyIcon(_hRedIcon);
         _window.Dispose();
     }
 
@@ -280,7 +348,7 @@ public sealed class TrayIcon : IDisposable
     private const uint NIM_ADD = 0, NIM_MODIFY = 1, NIM_DELETE = 2;
     private const uint NIF_MESSAGE = 0x1, NIF_ICON = 0x2, NIF_TIP = 0x4, NIF_INFO = 0x10;
     private const uint NIIF_INFO = 0x1;
-    private const uint MF_STRING = 0x0, MF_GRAYED = 0x1, MF_SEPARATOR = 0x800;
+    private const uint MF_STRING = 0x0, MF_GRAYED = 0x1, MF_CHECKED = 0x8, MF_SEPARATOR = 0x800;
     private const uint TPM_RIGHTBUTTON = 0x2, TPM_RIGHTALIGN = 0x8, TPM_BOTTOMALIGN = 0x20, TPM_NONOTIFY = 0x80, TPM_RETURNCMD = 0x100;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
 

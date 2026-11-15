@@ -41,6 +41,17 @@ public class KeyLatchTests
     }
 
     [Fact]
+    public void Clear_forgets_every_press()
+    {
+        var latch = new KeyLatch<string>();
+        latch.OnDown(VolDown, () => "binding", out _);
+        latch.Clear();
+        Assert.False(latch.OnUp(VolDown));
+        Assert.Equal("fresh", latch.OnDown(VolDown, () => "fresh", out var repeat));
+        Assert.False(repeat);
+    }
+
+    [Fact]
     public void Up_without_down_passes()
         => Assert.False(new KeyLatch<string>().OnUp(VolDown));
 }

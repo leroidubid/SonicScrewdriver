@@ -7,6 +7,12 @@ public sealed class AppSettings
 {
     public List<KeyBinding> Bindings { get; set; } = new();
     public bool StartWithWindows { get; set; }
+
+    /// <summary>
+    /// Switches off what an anti-cheat could flag: the keyboard hook (so all shortcuts), the OSD, the mouse wheel
+    /// on the tray icon, and the process lookups behind app icons and friendly names.
+    /// </summary>
+    public bool CompetitiveMode { get; set; }
     /// <summary>Output devices included in the cycle (MMDevice IDs); empty means every active device.</summary>
     public List<string> CycleDeviceIds { get; set; } = new();
 

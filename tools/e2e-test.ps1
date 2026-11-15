@@ -183,6 +183,26 @@ try {
         $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
         Check 'Locked settings: app starts with defaults' ($alive -and [math]::Abs($v - 0.8) -lt 0.001) ("alive=$alive, Shift unbound: target={0:N2}" -f $v)
     } finally { $lock.Dispose() }
+
+    # 11. Competitive mode: no keyboard hook, so Shift+Vol- is not intercepted (the master volume moves, the target does not)
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false,
+  "CompetitiveMode": true
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    $alive = -not $app.HasExited
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 900
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    $m = (Master).MasterVolumeLevelScalar
+    Check 'Competitive mode: shortcuts are not intercepted' ($alive -and [math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("alive=$alive, target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
 }
 finally {
     if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id -Force }

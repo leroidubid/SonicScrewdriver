@@ -24,8 +24,24 @@ public partial class OsdWindow : Window, IOsd
         SizeChanged += (_, _) => Reposition();
     }
 
+    private bool _enabled = true;
+
+    /// <summary>Competitive mode turns the OSD off: nothing is ever shown.</summary>
+    public bool Enabled
+    {
+        get => _enabled;
+        set
+        {
+            _enabled = value;
+            if (value) return;
+            _hideTimer.Stop();
+            if (IsVisible) Hide();
+        }
+    }
+
     public void Show(string? exe, string title, string detail)
     {
+        if (!_enabled) return;
         var icon = IconCache.Get(exe);
         AppIcon.Source = icon;
         Fallback.Visibility = icon is null ? Visibility.Visible : Visibility.Collapsed;

@@ -46,6 +46,21 @@ public partial class SettingsWindow : Window
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
+        CompetitiveBox.IsChecked = current.CompetitiveMode;
+        ApplyCompetitiveState();
+    }
+
+    private void Competitive_Changed(object sender, RoutedEventArgs e) => ApplyCompetitiveState();
+
+    /// <summary>Everything that depends on the keyboard hook is greyed out and disabled in competitive mode.</summary>
+    private void ApplyCompetitiveState()
+    {
+        var shortcutsOn = CompetitiveBox.IsChecked != true;
+        foreach (UIElement element in new UIElement[] { ColumnHeader, AddButton, RowsBorder, CycleSection })
+        {
+            element.IsEnabled = shortcutsOn;
+            element.Opacity = shortcutsOn ? 1 : 0.4;
+        }
     }
 
     private void Add_Click(object sender, RoutedEventArgs e) => _rows.Add(new BindingRowViewModel());
@@ -63,6 +78,7 @@ public partial class SettingsWindow : Window
         {
             Bindings = _rows.Select(r => r.ToBinding()).ToList(),
             StartWithWindows = StartupBox.IsChecked == true,
+            CompetitiveMode = CompetitiveBox.IsChecked == true,
             // All checked is stored as "all" (empty), so devices plugged in later join the cycle.
             CycleDeviceIds = CycleDevices.All(d => d.Included)
                 ? new List<string>()
