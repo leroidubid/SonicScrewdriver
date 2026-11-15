@@ -28,7 +28,16 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 - **Mouse wheel.** Scroll over the tray icon to change the master volume, or over a mixer row to
   change that app.
 - **At a glance.** The tray tooltip and menu show the current output device and your shortcuts.
+- **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
+  lookups) for online games. See [Games and anti-cheat](#games-and-anti-cheat).
 - **Light.** Around 20 MB of RAM and no CPU at idle; no polling, everything is event driven.
+
+## Why
+
+I wanted to change the volume of several apps quickly while a game was running full screen: turn Discord up,
+the music down, without leaving the game. I had been using hotkey scripts, but they were a pain to maintain, and I
+could not find an existing tool that did what I wanted. So I built one: a small, light mixer whose shortcuts live on
+the media keys and act on the app you choose.
 
 ## Install
 
@@ -56,6 +65,25 @@ The default shortcut is `Ctrl + media keys` on the foreground app. Settings are 
   unless it runs elevated too.
 - **Undocumented APIs:** changing the default device and routing an app to an output use undocumented
   Windows interfaces, the same ones EarTrumpet uses.
+
+## Games and anti-cheat
+
+Sonic Screwdriver is not a cheat: it installs no driver, injects nothing into other programs and never reads their
+memory. Even so, anti-cheat systems are opaque, and a global keyboard hook can look suspicious to some of them, so
+compatibility cannot be guaranteed.
+
+For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlEye), turn on **Competitive mode**
+(tray menu, or Shortcut settings) or quit the app first. In that mode:
+
+| Switched off | What you lose |
+|---|---|
+| The keyboard hook | All modifier + media key shortcuts, and output device cycling |
+| The on-screen display | The overlay shown after a shortcut |
+| Mouse wheel on the tray icon | Master volume with the wheel |
+| Lookups of other programs | App icons and friendly names (the exe name and a generic icon are shown instead) |
+
+The mixer, the sliders, switching the default output and the physical media keys keep working. Competitive mode
+lowers the risk but does not remove it: quitting the app is the safest choice.
 
 ## Security
 

@@ -39,6 +39,14 @@ public class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void CompetitiveMode_defaults_to_off_and_roundtrips()
+    {
+        Assert.False(AppSettings.CreateDefault().CompetitiveMode);
+        new SettingsStore(PathFile).Save(new AppSettings { CompetitiveMode = true });
+        Assert.True(new SettingsStore(PathFile).Load().CompetitiveMode);
+    }
+
+    [Fact]
     public void Load_corrupt_file_backs_up_and_returns_default()
     {
         File.WriteAllText(PathFile, "{not json");

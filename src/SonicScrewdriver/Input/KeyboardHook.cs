@@ -35,6 +35,7 @@ public sealed class KeyboardHook : IDisposable
     public void Install()
     {
         if (_thread is not null) return;
+        _latch.Clear(); // a press cut short by an earlier Dispose must not linger
         using var ready = new ManualResetEventSlim();
         Exception? error = null;
         _thread = new Thread(() =>

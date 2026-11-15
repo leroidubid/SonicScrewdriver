@@ -79,6 +79,7 @@ public partial class App : Application
         _store = new SettingsStore(SettingsStore.DefaultPath);
         _settings = _store.Load();
         _settings.StartWithWindows = StartupRegistration.IsEnabled(); // the installer may have set it
+        ProcessInfo.Minimal = _settings.CompetitiveMode; // before any session is listed
         _resolver = new BindingResolver(_settings.Bindings);
 
         _audio = new AudioSessionService();
@@ -91,6 +92,12 @@ public partial class App : Application
         _tray.OpenFlyoutRequested += (_, _) => ShowFlyout();
         _tray.OpenSettingsRequested += (_, _) => OpenSettings();
         _tray.ExitRequested += (_, _) => Shutdown();
+        _tray.CompetitiveModeToggled += (_, on) =>
+        {
+            _settings.CompetitiveMode = on;
+            ApplyMode();
+            TrySave();
+        };
         _tray.WheelScrolled += (_, notches) =>
         {
             var v = Math.Clamp(_audio.MasterVolume + notches * (float)(WheelVolume.StepPerNotch / 100), 0f, 1f);
@@ -99,18 +106,40 @@ public partial class App : Application
         };
 
         _hook = new KeyboardHook(mods => _resolver.Resolve(mods), OnMediaAction);
+        ApplyMode(runtimeChange: false);
+
+        if (_store.RecoveredFromCorruption)
+            _tray.Notify("Sonic Screwdriver", "Settings file was unreadable: defaults restored (backup in settings.json.bak).");
+    }
+
+    /// <summary>
+    /// Applies competitive mode. When on, nothing that an anti-cheat could flag runs: no keyboard hook (so no
+    /// shortcuts), no OSD, no wheel registration on the tray icon, and no lookups of other processes.
+    /// </summary>
+    private void ApplyMode(bool runtimeChange = true)
+    {
+        var on = _settings.CompetitiveMode;
+        ProcessInfo.Minimal = on;
+        _osd.Enabled = !on;
+        _tray!.WheelEnabled = !on;
+        _tray.SetCompetitive(on);
+        if (on) _hook!.Dispose();
+        else InstallHook();
+        // Start the session list over: drops process handles when entering the mode, rediscovers names and icons when leaving it.
+        if (runtimeChange) _audio.Reset();
+    }
+
+    private void InstallHook()
+    {
         try
         {
-            _hook.Install();
+            _hook!.Install();
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Could not install the keyboard hook: {ex.Message}", "Sonic Screwdriver",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
-
-        if (_store.RecoveredFromCorruption)
-            _tray.Notify("Sonic Screwdriver", "Settings file was unreadable: defaults restored (backup in settings.json.bak).");
     }
 
     /// <summary>Persists settings (plus an optional registry change); reports failures instead of hiding them.</summary>
@@ -160,10 +189,12 @@ public partial class App : Application
         _settingsWindow = new SettingsWindow(_settings, _audio);
         _settingsWindow.Saved += s =>
         {
+            var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
             _settings = s;
             _resolver = new BindingResolver(s.Bindings);
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;
             _tray?.SetShortcuts(ShortcutSummary.Lines(s.Bindings));
+            if (modeChanged) ApplyMode();
             TrySave(() => StartupRegistration.Set(s.StartWithWindows));
         };
         _settingsWindow.Closed += (_, _) =>

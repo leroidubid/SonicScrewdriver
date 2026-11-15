@@ -35,7 +35,18 @@ public sealed class AppVolumeViewModel : ObservableObject
 
     public string DeviceId { get; }
     public string ExeName { get; }
-    public string DisplayName { get; }
+    private string _displayName = "";
+
+    public string DisplayName
+    {
+        get => _displayName;
+        private set
+        {
+            if (value == _displayName) return;
+            _displayName = value;
+            Raise();
+        }
+    }
     public ImageSource? Icon => _icon;
 
     public double Volume
@@ -66,6 +77,7 @@ public sealed class AppVolumeViewModel : ObservableObject
     /// <summary>Refresh from the service without writing back.</summary>
     public void Sync(AudioApp app)
     {
+        DisplayName = app.DisplayName;
         var v = Math.Round(app.Volume * 100);
         if (v != _volume) { _volume = v; Raise(nameof(Volume)); }
         if (app.Muted != _muted) { _muted = app.Muted; Raise(nameof(Muted)); }
