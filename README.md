@@ -42,14 +42,20 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 
 ## Settings
 
-Right-click the tray icon, then **Shortcut settings**. Each row is a modifier combination, the app it controls
-(a specific app, the foreground app or the output devices) and the volume step. The same window picks the output
-devices used by the cycle shortcut, the Start with Windows option and **Competitive mode**, which greys out
-everything it turns off.
+Right-click the tray icon, then **Settings**. The window has one card per topic:
+
+- **Shortcuts**: each row is a modifier combination, the app it controls (a specific app, the foreground app or
+  the output devices) and the volume step.
+- **Output devices in the cycle**, and **Media keys** to choose which physical keys act as Vol+, Vol-, Mute, Play,
+  Next and Previous.
+- **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
+  automatically. While it is on, the shortcut options are greyed out.
+- **General**: Start with Windows.
 
 <p align="center">
-  <img src="docs/settings.png" alt="The settings window with three shortcuts" width="400">&nbsp;&nbsp;
-  <img src="docs/settings-competitive.png" alt="The settings window with Competitive mode on: the shortcut options are greyed out" width="400">
+  <img src="docs/settings.png" alt="Settings: shortcuts, output devices and media keys" width="290">&nbsp;
+  <img src="docs/settings-mode.png" alt="Settings: competitive mode, its shortcut and the automatic list" width="290">&nbsp;
+  <img src="docs/settings-competitive.png" alt="Settings with Competitive mode on: the shortcut options are greyed out" width="290">
 </p>
 
 ## Why

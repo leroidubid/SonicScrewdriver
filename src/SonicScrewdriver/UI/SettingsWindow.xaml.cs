@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using SonicScrewdriver.Audio;
 using SonicScrewdriver.Input;
 using SonicScrewdriver.Settings;
@@ -69,6 +71,21 @@ public partial class SettingsWindow : Window
         ApplyCompetitiveState();
     }
 
+    /// <summary>Dark title bar to match the window (Windows 10 build 18985 and later, and Windows 11; ignored otherwise).</summary>
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        try
+        {
+            var dark = 1;
+            DwmSetWindowAttribute(new WindowInteropHelper(this).Handle, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, ref dark, sizeof(int));
+        }
+        catch (Exception) { /* cosmetic only */ }
+    }
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
     private void Competitive_Changed(object sender, RoutedEventArgs e) => ApplyCompetitiveState();
 
     /// <summary>Everything that depends on the keyboard hook is greyed out and disabled in competitive mode.</summary>
@@ -90,17 +107,17 @@ public partial class SettingsWindow : Window
     {
         foreach (var (action, label) in RemapActions)
         {
-            var box = new KeyCaptureBox { Width = 160, Height = 26, Value = current.KeyRemaps.FirstOrDefault(r => r.Action == action)?.Key };
+            var box = new KeyCaptureBox { Width = 180, Height = 32, Style = (Style)FindResource(typeof(TextBox)), Value = current.KeyRemaps.FirstOrDefault(r => r.Action == action)?.Key };
             box.Validator = key =>
             {
                 var other = _remapBoxes.FirstOrDefault(r => r.Action != action && string.Equals(r.Box.Value, key, StringComparison.OrdinalIgnoreCase));
                 return other.Box is null ? null : $"{key} is already used for {RemapActions.First(a => a.Action == other.Action).Label}. Clear it first.";
             };
             box.Rejected += message => RemapError.Text = message;
-            var clear = new Button { Content = "Clear", Style = (Style)FindResource("FlatButton"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(8, 0, 0, 0) };
+            var clear = new Button { Content = "Clear", Style = (Style)FindResource("FlatButton"), Padding = new Thickness(14, 6, 14, 6), Margin = new Thickness(8, 0, 0, 0) };
             clear.Click += (_, _) => { box.Value = null; RemapError.Text = ""; };
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
-            row.Children.Add(new TextBlock { Text = label, Width = 130, VerticalAlignment = VerticalAlignment.Center });
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 3) };
+            row.Children.Add(new TextBlock { Text = label, Width = 140, VerticalAlignment = VerticalAlignment.Center });
             row.Children.Add(box);
             row.Children.Add(clear);
             RemapPanel.Children.Add(row);
