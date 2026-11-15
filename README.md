@@ -8,6 +8,11 @@ A lightweight per-app volume mixer for Windows 10/11 that lives in the notificat
 Press `Shift + Vol−` to turn Spotify down while the game keeps its volume. `Ctrl + Mute` silences
 whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 
+<p align="center">
+  <img src="docs/mixer.png" alt="The tray mixer: output devices and per-app sliders" width="300">&nbsp;&nbsp;&nbsp;
+  <img src="docs/osd.png" alt="The on-screen display after a shortcut" width="241">
+</p>
+
 ## Features
 
 - **Per-app mixer.** Click the tray icon to see every output device, its volume, and the apps
