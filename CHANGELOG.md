@@ -23,6 +23,12 @@ First public release.
   numpad) act as Vol+, Vol−, Mute, Play/Pause, Next and Previous. A remapped key resolves through the same shortcuts
   as the real key; without a shortcut it is replaced by the real media key (sent with `SendInput`, tagged so the hook
   ignores it). The tray tooltip and menu list the remaps. Off in competitive mode.
+- **Free shortcuts:** bind any key combination (Ctrl, Alt, Shift or Win plus any key) to Vol+, Vol−, Mute,
+  Play/Pause, Next or Previous on a specific app, the foreground app or the output devices, with its own volume step.
+  They are registered with `RegisterHotKey` (no extra keyboard hook; Windows matches the combination), re-registered
+  when the settings change, and unregistered in competitive mode. Duplicate combinations and combinations already owned
+  by Windows or another program are refused with a message in the settings window, never a crash. Hand-edited settings
+  are validated and sanitized, and the tray tooltip and menu list them.
 - **Pass-through:** media keys without a modifier, or with an unbound combination, keep their normal
   Windows behavior.
 - **On-screen display:** shows the app icon, its name and the new level, without stealing focus.

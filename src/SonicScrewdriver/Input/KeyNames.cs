@@ -31,6 +31,22 @@ public static class KeyNames
         d["Down"] = 0x28;
         d["Left"] = 0x25;
         d["Right"] = 0x27;
+        d["Enter"] = 0x0D;
+        d["Tab"] = 0x09;
+        d["Escape"] = 0x1B;
+        d["Backspace"] = 0x08;
+        d["PrintScreen"] = 0x2C;
+        d["Semicolon"] = 0xBA;
+        d["Equals"] = 0xBB;
+        d["Comma"] = 0xBC;
+        d["Minus"] = 0xBD;
+        d["Period"] = 0xBE;
+        d["Slash"] = 0xBF;
+        d["Backquote"] = 0xC0;
+        d["OpenBracket"] = 0xDB;
+        d["Backslash"] = 0xDC;
+        d["CloseBracket"] = 0xDD;
+        d["Quote"] = 0xDE;
         return d;
     }
 

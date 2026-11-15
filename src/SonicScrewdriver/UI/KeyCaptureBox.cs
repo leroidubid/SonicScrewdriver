@@ -63,7 +63,12 @@ public sealed class KeyCaptureBox : TextBox
             if (mods.HasFlag(ModifierKeys.Windows)) m |= Modifiers.Win;
             if (name is null) Rejected?.Invoke("This key cannot be used in a shortcut.");
             else if (m == Modifiers.None) Rejected?.Invoke("Hold at least one of Ctrl, Alt, Shift or Win with the key.");
-            else Accept(new Hotkey(m, vk).ToString());
+            else
+            {
+                var chord = new Hotkey(m, vk).ToString();
+                if (Validator?.Invoke(chord) is { } error) Rejected?.Invoke(error);
+                else Accept(chord);
+            }
         }
         else if (name is null || !KeyNames.IsRemappable(vk))
             Rejected?.Invoke("Use a function key (F1–F24), Pause, Scroll Lock, Insert, Home, End, Page Up/Down or a numpad key: typing keys are not allowed.");

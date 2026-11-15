@@ -44,6 +44,7 @@ public sealed class SettingsStore
             s.CycleDeviceIds ??= new List<string>();
             s.AutoPrograms = SanitizePrograms(s.AutoPrograms);
             s.KeyRemaps = SanitizeRemaps(s.KeyRemaps);
+            s.FreeHotkeys = SanitizeFreeHotkeys(s.FreeHotkeys, s.CompetitiveHotkey);
             s.CompetitiveHotkey =Input.Hotkey.TryParse(s.CompetitiveHotkey, out var hotkey) ? hotkey.ToString() : null;
             return s;
         }
@@ -80,6 +81,30 @@ public sealed class SettingsStore
             if (target.Kind == Bindings.TargetKind.Process && string.IsNullOrEmpty(target.ExeName)) continue;
             if (!seen.Add(b.Modifiers)) continue;
             result.Add(b with { Target = target, StepPercent = Math.Clamp(b.StepPercent, 1, 50) });
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Keeps free hotkeys with a valid chord (canonical text) and target, clamps the step to 1–50 %, and keeps the
+    /// first of duplicate chords; a chord equal to the competitive-mode shortcut is dropped.
+    /// </summary>
+    internal static List<FreeHotkey> SanitizeFreeHotkeys(List<FreeHotkey>? hotkeys, string? competitiveChord)
+    {
+        var seen = new HashSet<Input.Hotkey>();
+        if (Input.Hotkey.TryParse(competitiveChord, out var modeChord)) seen.Add(modeChord);
+        var result = new List<FreeHotkey>();
+        foreach (var f in hotkeys ?? new List<FreeHotkey>())
+        {
+            if (f?.Target is null || !Enum.IsDefined(f.Action) || !f.TryGetHotkey(out var chord) || !seen.Add(chord)) continue;
+            var target = f.Target.Kind switch
+            {
+                Bindings.TargetKind.Process => Bindings.Target.Process(f.Target.ExeName ?? ""),
+                Bindings.TargetKind.OutputDevice => Bindings.Target.OutputDevice,
+                _ => Bindings.Target.Foreground,
+            };
+            if (target.Kind == Bindings.TargetKind.Process && string.IsNullOrEmpty(target.ExeName)) { seen.Remove(chord); continue; }
+            result.Add(f with { Chord = chord.ToString(), Target = target, StepPercent = Math.Clamp(f.StepPercent, 1, 50) });
         }
         return result;
     }

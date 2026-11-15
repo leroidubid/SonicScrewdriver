@@ -23,6 +23,8 @@ public static class Kb {
     public static void Down(byte vk) { keybd_event(vk, 0, Ext(vk), UIntPtr.Zero); }
     public static void Up(byte vk)   { keybd_event(vk, 0, Ext(vk) | KEYUP, UIntPtr.Zero); }
     public static void Press(byte vk) { Down(vk); System.Threading.Thread.Sleep(30); Up(vk); }
+    [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr hwnd, int id, uint mods, uint vk);
+    [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr hwnd, int id);
 }
 "@
 
@@ -219,6 +221,56 @@ try {
     $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
     $m = (Master).MasterVolumeLevelScalar
     Check 'Mode shortcut: competitive on again drops the hook' ([math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
+
+    # 12b. Free hotkeys (any chord, RegisterHotKey): off in competitive mode, on when it is off, a taken chord is skipped
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    $tookF6 = [Kb]::RegisterHotKey([IntPtr]::Zero, 1, 0x4003, 0x75)   # this script owns Ctrl+Alt+F6 before the app starts
+    @'
+{
+  "Bindings": [],
+  "StartWithWindows": false,
+  "CompetitiveMode": true,
+  "CompetitiveHotkey": "Ctrl+Alt+F9",
+  "FreeHotkeys": [
+    { "Chord": "Ctrl+Alt+F8", "Action": "VolumeDown", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 },
+    { "Chord": "Ctrl+Alt+F7", "Action": "Mute", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 5 },
+    { "Chord": "Ctrl+Alt+F6", "Action": "VolumeDown", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 },
+    { "Chord": "Ctrl+Alt+F8", "Action": "VolumeUp", "Target": { "Kind": "Foreground" }, "StepPercent": 5 },
+    { "Chord": "F5", "Action": "Mute", "Target": { "Kind": "Foreground" }, "StepPercent": 5 }
+  ],
+  "PinnedApps": [ "powershell.exe" ],
+  "HiddenApps": [ "notepad.exe" ]
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    function Chord([byte]$vk) { [Kb]::Down($VK_CONTROL); [Kb]::Down(0x12); [Kb]::Press($vk); [Kb]::Up(0x12); [Kb]::Up($VK_CONTROL); Start-Sleep -Milliseconds 500 }
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (TargetSession $player.Id).SimpleAudioVolume.Mute = $false
+    Chord 0x77
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Free hotkey: nothing happens in competitive mode' ((-not $app.HasExited) -and [math]::Abs($v - 0.8) -lt 0.001) ("target={0:N2} (expected 0.80)" -f $v)
+    ToggleMode   # competitive off: the free hotkeys get registered
+    Chord 0x77
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Free hotkey: Ctrl+Alt+F8 lowers the target by its step' ([math]::Abs($v - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $v)
+    Chord 0x76
+    $mu1 = (TargetSession $player.Id).SimpleAudioVolume.Mute
+    Chord 0x76
+    $mu2 = (TargetSession $player.Id).SimpleAudioVolume.Mute
+    Check 'Free hotkey: Ctrl+Alt+F7 toggles the target mute' ($mu1 -and -not $mu2) "after 1st=$mu1, after 2nd=$mu2"
+    Chord 0x75
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    $app.Refresh()
+    Check 'Free hotkey: a chord owned by another program is skipped, no crash' ($tookF6 -and -not $app.HasExited -and [math]::Abs($v - 0.7) -lt 0.011) ("script registered F6=$tookF6, target={0:N2} (expected 0.70), app alive=$(-not $app.HasExited)" -f $v)
+    Chord 0x77
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Free hotkey: a duplicate chord keeps the first entry only' ([math]::Abs($v - 0.6) -lt 0.011) ("target={0:N2} (expected 0.60)" -f $v)
+    ToggleMode   # competitive on again: unregistered
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    Chord 0x77
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Free hotkey: unregistered again when competitive mode returns' ([math]::Abs($v - 0.8) -lt 0.001) ("target={0:N2} (expected 0.80)" -f $v)
+    [void][Kb]::UnregisterHotKey([IntPtr]::Zero, 1)
 
     # 13. Automatic competitive mode: ping.exe on the list turns the mode on while it runs, and off when it exits
     Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null

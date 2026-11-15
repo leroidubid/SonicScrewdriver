@@ -29,6 +29,7 @@ public partial class App : Application
     private OsdWindow _osd = null!;
     private KeyboardHook? _hook;
     private GlobalHotkey? _modeHotkey;
+    private GlobalHotkeySet _freeHotkeys = null!;
     private readonly AutoCompetitive _autoMode = new();
     private readonly System.Windows.Threading.DispatcherTimer _autoTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private TrayIcon? _tray;
@@ -105,6 +106,8 @@ public partial class App : Application
             _osd.Show(null, "Master volume", $"{(int)MathF.Round(v * 100)} %");
         };
 
+        _freeHotkeys = new GlobalHotkeySet();
+        _freeHotkeys.Pressed += entry => OnMediaAction(entry.Binding, entry.Action);
         _hook = new KeyboardHook(() => _decider, OnMediaAction);
         ApplyMode(runtimeChange: false);
 
@@ -133,6 +136,7 @@ public partial class App : Application
         _tray.SetCompetitive(on);
         if (on) _hook!.Dispose();
         else InstallHook();
+        ApplyFreeHotkeys();
         // Start the session list over: drops process handles when entering the mode, rediscovers names and icons when leaving it.
         if (runtimeChange) _audio.Reset();
     }
@@ -146,7 +150,18 @@ public partial class App : Application
     }
 
     private static IReadOnlyList<string> ShortcutLines(AppSettings s) =>
-        ShortcutSummary.Lines(s.Bindings).Concat(ShortcutSummary.RemapLines(s.KeyRemaps)).ToList();
+        ShortcutSummary.Lines(s.Bindings).Concat(ShortcutSummary.RemapLines(s.KeyRemaps)).Concat(ShortcutSummary.FreeLines(s.FreeHotkeys)).ToList();
+
+    /// <summary>
+    /// Registers the free hotkeys with Windows (none while competitive mode is on: they are shortcuts).
+    /// A chord that Windows or another program already owns is reported and skipped, never fatal.
+    /// </summary>
+    private void ApplyFreeHotkeys()
+    {
+        var failed = _freeHotkeys.Apply(_settings.CompetitiveMode ? FreeHotkeyMap.Empty : FreeHotkeyMap.From(_settings.FreeHotkeys));
+        if (failed.Count > 0)
+            _tray?.Notify("Sonic Screwdriver", $"Shortcut {string.Join(", ", failed)} is already used by Windows or another program and was not registered.");
+    }
 
     /// <summary>Switches competitive mode from the tray menu or the shortcut, and saves the choice.</summary>
     private void SetCompetitive(bool on, bool notify)
@@ -249,7 +264,7 @@ public partial class App : Application
             _settingsWindow.Activate();
             return;
         }
-        _settingsWindow = new SettingsWindow(_settings, _audio);
+        _settingsWindow = new SettingsWindow(_settings, _audio, h => _freeHotkeys.IsAvailable(h));
         _settingsWindow.Saved += s =>
         {
             if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open
@@ -260,6 +275,7 @@ public partial class App : Application
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;
             _tray?.SetShortcuts(ShortcutLines(s));
             if (modeChanged) ApplyMode();
+            else ApplyFreeHotkeys();
             RegisterModeHotkey();
             PollAutoPrograms();
             TrySave(() => StartupRegistration.Set(s.StartWithWindows));
@@ -278,6 +294,7 @@ public partial class App : Application
         _autoTimer.Stop();
         _hook?.Dispose();
         _modeHotkey?.Dispose();
+        _freeHotkeys?.Dispose();
         _tray?.Dispose();
         _audio?.Dispose();
         _showWait?.Unregister(null);

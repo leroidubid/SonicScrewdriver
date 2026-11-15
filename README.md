@@ -25,6 +25,12 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   F12). A remapped key works exactly like the real one: `Shift + F11` turns down the app bound to Shift, a bare
   `F11` lowers the master volume. A remapped key loses its usual job while the app runs, and the remaps are off in
   competitive mode (they need the keyboard hook).
+- **Free shortcuts.** Not limited to media keys: record any combination (Ctrl, Alt, Shift or Win plus any key, for
+  example `Ctrl + Alt + F8`) and choose what it does (Vol+, Vol−, Mute, Play/Pause, Next, Previous), to which app (a
+  specific app, the foreground app or the output devices) and the volume step. These use `RegisterHotKey`: Windows
+  matches the combination itself, so there is no extra keyboard hook, and the keys of a combination are taken from
+  other programs only while it is registered. A combination already used by Windows or another program is refused
+  with a message in the settings. Off in competitive mode.
 - **Media keys stay normal.** A media key without a modifier, or with an unbound combination, keeps
   its usual Windows behavior.
 - **On-screen display.** A small, non-intrusive overlay shows the app icon, its name and the new level.
@@ -46,6 +52,8 @@ Right-click the tray icon, then **Settings**. The window has one card per topic:
 
 - **Shortcuts**: each row is a modifier combination, the app it controls (a specific app, the foreground app or
   the output devices) and the volume step.
+- **Free shortcuts**: any key combination bound to an action (Vol+, Vol−, Mute, Play/Pause, Next, Previous), a target
+  and a step. Duplicate combinations and combinations that Windows or another program already owns are refused.
 - **Output devices in the cycle**, and **Media keys** to choose which physical keys act as Vol+, Vol-, Mute, Play,
   Next and Previous.
 - **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
