@@ -52,7 +52,7 @@ jobs:
         with:
           vt_api_key: ${{ env.VT_API_KEY }}
           github_token: ${{ github.token }}
-          update_release: ${{ github.ref_type == 'tag' }}
+          update_release_body: ${{ github.ref_type == 'tag' }}
           files: scan/*.exe
 
       - name: VirusTotal summary
