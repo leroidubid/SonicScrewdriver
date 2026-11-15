@@ -1,5 +1,3 @@
-<p align="center"><img src="tools/icon-preview.png" alt="Sonic Screwdriver icon" width="360"></p>
-
 # Sonic Screwdriver
 
 A lightweight per-app volume mixer for Windows 10/11 that lives in the notification area, with
