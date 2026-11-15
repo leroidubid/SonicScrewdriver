@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using SonicScrewdriver.Actions;
 using SonicScrewdriver.Audio;
+using SonicScrewdriver.Automation;
 using SonicScrewdriver.Bindings;
 using SonicScrewdriver.Input;
 using SonicScrewdriver.Interop;
@@ -22,10 +23,14 @@ public partial class App : Application
     private SettingsStore _store = null!;
     private AppSettings _settings = null!;
     private volatile BindingResolver _resolver = new(Array.Empty<KeyBinding>());
+    private volatile KeyDecider _decider = new(KeyRemapMap.Empty, _ => null);
     private AudioSessionService _audio = null!;
     private ActionDispatcher _dispatcher = null!;
     private OsdWindow _osd = null!;
     private KeyboardHook? _hook;
+    private GlobalHotkey? _modeHotkey;
+    private readonly AutoCompetitive _autoMode = new();
+    private readonly System.Windows.Threading.DispatcherTimer _autoTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private TrayIcon? _tray;
     private FlyoutWindow? _flyout;
     private SettingsWindow? _settingsWindow;
@@ -80,7 +85,7 @@ public partial class App : Application
         _settings = _store.Load();
         _settings.StartWithWindows = StartupRegistration.IsEnabled(); // the installer may have set it
         ProcessInfo.Minimal = _settings.CompetitiveMode; // before any session is listed
-        _resolver = new BindingResolver(_settings.Bindings);
+        RebuildDecider();
 
         _audio = new AudioSessionService();
         _osd = new OsdWindow();
@@ -88,16 +93,11 @@ public partial class App : Application
         _dispatcher.CycleDeviceIds = _settings.CycleDeviceIds;
         _tray = new TrayIcon();
         _tray.DefaultDeviceName = () => _audio.GetDevices().FirstOrDefault(d => d.IsDefault)?.Name;
-        _tray.SetShortcuts(ShortcutSummary.Lines(_settings.Bindings));
+        _tray.SetShortcuts(ShortcutLines(_settings));
         _tray.OpenFlyoutRequested += (_, _) => ShowFlyout();
         _tray.OpenSettingsRequested += (_, _) => OpenSettings();
         _tray.ExitRequested += (_, _) => Shutdown();
-        _tray.CompetitiveModeToggled += (_, on) =>
-        {
-            _settings.CompetitiveMode = on;
-            ApplyMode();
-            TrySave();
-        };
+        _tray.CompetitiveModeToggled += (_, on) => SetCompetitive(on, notify: false);
         _tray.WheelScrolled += (_, notches) =>
         {
             var v = Math.Clamp(_audio.MasterVolume + notches * (float)(WheelVolume.StepPerNotch / 100), 0f, 1f);
@@ -105,8 +105,16 @@ public partial class App : Application
             _osd.Show(null, "Master volume", $"{(int)MathF.Round(v * 100)} %");
         };
 
-        _hook = new KeyboardHook(mods => _resolver.Resolve(mods), OnMediaAction);
+        _hook = new KeyboardHook(() => _decider, OnMediaAction);
         ApplyMode(runtimeChange: false);
+
+        // RegisterHotKey, not the keyboard hook: it keeps working while competitive mode has uninstalled the hook.
+        _modeHotkey = new GlobalHotkey();
+        _modeHotkey.Pressed += () => SetCompetitive(!_settings.CompetitiveMode, notify: true);
+        RegisterModeHotkey();
+
+        _autoTimer.Tick += (_, _) => PollAutoPrograms();
+        PollAutoPrograms();
 
         if (_store.RecoveredFromCorruption)
             _tray.Notify("Sonic Screwdriver", "Settings file was unreadable: defaults restored (backup in settings.json.bak).");
@@ -129,6 +137,57 @@ public partial class App : Application
         if (runtimeChange) _audio.Reset();
     }
 
+    /// <summary>The bindings and key remaps become what the keyboard hook decides with (read on the hook thread).</summary>
+    private void RebuildDecider()
+    {
+        _resolver = new BindingResolver(_settings.Bindings);
+        var resolver = _resolver;
+        _decider = new KeyDecider(KeyRemapMap.From(_settings.KeyRemaps.Select(r => (r.Action, r.Key))), mods => resolver.Resolve(mods));
+    }
+
+    private static IReadOnlyList<string> ShortcutLines(AppSettings s) =>
+        ShortcutSummary.Lines(s.Bindings).Concat(ShortcutSummary.RemapLines(s.KeyRemaps)).ToList();
+
+    /// <summary>Switches competitive mode from the tray menu or the shortcut, and saves the choice.</summary>
+    private void SetCompetitive(bool on, bool notify)
+    {
+        _autoMode.UserChanged(on); // a manual switch always wins over the automatic list
+        if (on == _settings.CompetitiveMode) return;
+        _settings.CompetitiveMode = on;
+        ApplyMode();
+        TrySave();
+        if (notify)
+            _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
+                on ? "Shortcuts, on-screen display and wheel are off." : "Shortcuts, on-screen display and wheel are back.");
+    }
+
+    /// <summary>
+    /// Every 5 s while an enabled program is listed: one snapshot of the process names (no process is opened).
+    /// Runs once more after the list changes, so that turning the last entry off also ends an automatic "on".
+    /// </summary>
+    private void PollAutoPrograms()
+    {
+        var any = _settings.AutoPrograms.Any(p => p.Enabled);
+        var running = any ? ProcessNames.Running() : new HashSet<string>();
+        var program = AutoCompetitive.FirstRunning(_settings.AutoPrograms, running);
+        if (_autoMode.Evaluate(program is not null, _settings.CompetitiveMode) is { } on)
+        {
+            _settings.CompetitiveMode = on; // not saved: it follows the program, not a preference
+            ApplyMode();
+            _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
+                on ? $"Turned on because {program} is running." : "The program has exited.");
+        }
+        _autoTimer.IsEnabled = any;
+    }
+
+    private void RegisterModeHotkey()
+    {
+        Hotkey? hotkey = Hotkey.TryParse(_settings.CompetitiveHotkey, out var h) ? h : null;
+        _tray!.ModeHotkeyText = hotkey?.ToString();
+        if (!_modeHotkey!.Register(hotkey))
+            _tray?.Notify("Sonic Screwdriver", $"The shortcut {hotkey} for competitive mode is already used by another program.");
+    }
+
     private void InstallHook()
     {
         try
@@ -148,7 +207,11 @@ public partial class App : Application
         try
         {
             alsoDo?.Invoke();
-            _store.Save(_settings);
+            // An automatic "on" follows a running program: it is never saved as the user's preference.
+            var saved = _settings.CompetitiveMode;
+            if (_autoMode.IsAutomatic) _settings.CompetitiveMode = false;
+            try { _store.Save(_settings); }
+            finally { _settings.CompetitiveMode = saved; }
         }
         catch (Exception ex)
         {
@@ -189,12 +252,16 @@ public partial class App : Application
         _settingsWindow = new SettingsWindow(_settings, _audio);
         _settingsWindow.Saved += s =>
         {
+            if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open
             var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
+            if (_settingsWindow!.CompetitiveModeEdited) _autoMode.UserChanged(s.CompetitiveMode);
             _settings = s;
-            _resolver = new BindingResolver(s.Bindings);
+            RebuildDecider();
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;
-            _tray?.SetShortcuts(ShortcutSummary.Lines(s.Bindings));
+            _tray?.SetShortcuts(ShortcutLines(s));
             if (modeChanged) ApplyMode();
+            RegisterModeHotkey();
+            PollAutoPrograms();
             TrySave(() => StartupRegistration.Set(s.StartWithWindows));
         };
         _settingsWindow.Closed += (_, _) =>
@@ -208,7 +275,9 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _autoTimer.Stop();
         _hook?.Dispose();
+        _modeHotkey?.Dispose();
         _tray?.Dispose();
         _audio?.Dispose();
         _showWait?.Unregister(null);

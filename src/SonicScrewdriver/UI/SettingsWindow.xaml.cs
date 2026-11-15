@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
 using SonicScrewdriver.Audio;
+using SonicScrewdriver.Input;
 using SonicScrewdriver.Settings;
 
 namespace SonicScrewdriver.UI;
@@ -8,10 +10,19 @@ namespace SonicScrewdriver.UI;
 public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<BindingRowViewModel> _rows;
+    private readonly ObservableCollection<AutoProgramRowViewModel> _autoRows;
+    private readonly List<(MediaKey Action, KeyCaptureBox Box)> _remapBoxes = new();
+    private readonly bool _initialCompetitive;
 
     public event Action<AppSettings>? Saved;
 
+    /// <summary>True when the user changed the checkbox: otherwise the live state (a shortcut may have toggled it) wins.</summary>
+    public bool CompetitiveModeEdited => (CompetitiveBox.IsChecked == true) != _initialCompetitive;
+
     public List<string> TargetChoices { get; }
+
+    /// <summary>Running apps offered for the automatic list.</summary>
+    public List<string> AutoChoices { get; }
 
     /// <summary>Active output devices with a checkbox: included in the Output device cycle.</summary>
     public List<CycleDeviceItem> CycleDevices { get; }
@@ -38,15 +49,23 @@ public partial class SettingsWindow : Window
             if (app is not null) row.TargetText = BindingRowViewModel.Label(app.DisplayName, app.ExeName);
         }
 
+        AutoChoices = running.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        _autoRows = new ObservableCollection<AutoProgramRowViewModel>(
+            current.AutoPrograms.Select(p => new AutoProgramRowViewModel(p.ExeName, p.Enabled)));
+        AutoList.ItemsSource = _autoRows;
+
         var all = current.CycleDeviceIds.Count == 0;
         CycleDevices = audio.GetDevices()
             .Select(d => new CycleDeviceItem(d.Id, d.Name) { Included = all || current.CycleDeviceIds.Contains(d.Id) })
             .ToList();
 
+        BuildRemapRows(current);
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
-        CompetitiveBox.IsChecked = current.CompetitiveMode;
+        CompetitiveBox.IsChecked = _initialCompetitive = current.CompetitiveMode;
+        ModeHotkeyBox.Value = current.CompetitiveHotkey;
+        ModeHotkeyBox.Rejected += message => HotkeyError.Text = message;
         ApplyCompetitiveState();
     }
 
@@ -56,11 +75,50 @@ public partial class SettingsWindow : Window
     private void ApplyCompetitiveState()
     {
         var shortcutsOn = CompetitiveBox.IsChecked != true;
-        foreach (UIElement element in new UIElement[] { ColumnHeader, AddButton, RowsBorder, CycleSection })
+        ShortcutsSection.IsEnabled = shortcutsOn;
+        ShortcutsSection.Opacity = shortcutsOn ? 1 : 0.4;
+    }
+
+    private static readonly (MediaKey Action, string Label)[] RemapActions =
+    {
+        (MediaKey.VolumeUp, "Volume up"), (MediaKey.VolumeDown, "Volume down"), (MediaKey.Mute, "Mute"),
+        (MediaKey.PlayPause, "Play / Pause"), (MediaKey.Next, "Next track"), (MediaKey.Previous, "Previous track"),
+    };
+
+    /// <summary>One row per media key: its label, a box that records the next key press, and Clear.</summary>
+    private void BuildRemapRows(AppSettings current)
+    {
+        foreach (var (action, label) in RemapActions)
         {
-            element.IsEnabled = shortcutsOn;
-            element.Opacity = shortcutsOn ? 1 : 0.4;
+            var box = new KeyCaptureBox { Width = 160, Height = 26, Value = current.KeyRemaps.FirstOrDefault(r => r.Action == action)?.Key };
+            box.Validator = key =>
+            {
+                var other = _remapBoxes.FirstOrDefault(r => r.Action != action && string.Equals(r.Box.Value, key, StringComparison.OrdinalIgnoreCase));
+                return other.Box is null ? null : $"{key} is already used for {RemapActions.First(a => a.Action == other.Action).Label}. Clear it first.";
+            };
+            box.Rejected += message => RemapError.Text = message;
+            var clear = new Button { Content = "Clear", Style = (Style)FindResource("FlatButton"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(8, 0, 0, 0) };
+            clear.Click += (_, _) => { box.Value = null; RemapError.Text = ""; };
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+            row.Children.Add(new TextBlock { Text = label, Width = 130, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(box);
+            row.Children.Add(clear);
+            RemapPanel.Children.Add(row);
+            _remapBoxes.Add((action, box));
         }
+    }
+
+    private void ClearModeHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        ModeHotkeyBox.Value = null;
+        HotkeyError.Text = "";
+    }
+
+    private void AddAuto_Click(object sender, RoutedEventArgs e) => _autoRows.Add(new AutoProgramRowViewModel("", true));
+
+    private void RemoveAuto_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: AutoProgramRowViewModel row }) _autoRows.Remove(row);
     }
 
     private void Add_Click(object sender, RoutedEventArgs e) => _rows.Add(new BindingRowViewModel());
@@ -79,6 +137,9 @@ public partial class SettingsWindow : Window
             Bindings = _rows.Select(r => r.ToBinding()).ToList(),
             StartWithWindows = StartupBox.IsChecked == true,
             CompetitiveMode = CompetitiveBox.IsChecked == true,
+            CompetitiveHotkey = ModeHotkeyBox.Value,
+            KeyRemaps = _remapBoxes.Where(r => r.Box.Value is not null).Select(r => new KeyRemap(r.Action, r.Box.Value!)).ToList(),
+            AutoPrograms = _autoRows.Select(r => new AutoProgram(BindingRowViewModel.ExeFromLabel(r.ExeText), r.Enabled)).ToList(),
             // All checked is stored as "all" (empty), so devices plugged in later join the cycle.
             CycleDeviceIds = CycleDevices.All(d => d.Included)
                 ? new List<string>()
@@ -92,6 +153,18 @@ public partial class SettingsWindow : Window
         Saved?.Invoke(settings);
         Close();
     }
+}
+
+/// <summary>Editable row of the automatic competitive-mode list.</summary>
+public sealed class AutoProgramRowViewModel : ObservableObject
+{
+    private bool _enabled;
+    private string _exe;
+
+    public AutoProgramRowViewModel(string exe, bool enabled) { _exe = exe; _enabled = enabled; }
+
+    public bool Enabled { get => _enabled; set { _enabled = value; Raise(); } }
+    public string ExeText { get => _exe; set { _exe = value ?? ""; Raise(); } }
 }
 
 public sealed class CycleDeviceItem

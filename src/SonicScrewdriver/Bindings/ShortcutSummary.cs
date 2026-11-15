@@ -10,6 +10,21 @@ public static class ShortcutSummary
     public static IReadOnlyList<string> Lines(IEnumerable<KeyBinding> bindings) =>
         bindings.Select(b => $"{Format(b.Modifiers)} → {Format(b.Target)}").ToList();
 
+    /// <summary>One line listing the remapped keys ("Keys: F10 Mute, F11 Vol−"); empty when there are none.</summary>
+    public static IReadOnlyList<string> RemapLines(IEnumerable<Settings.KeyRemap> remaps)
+    {
+        var parts = remaps.Select(r => $"{r.Key} {r.Action switch
+        {
+            MediaKey.VolumeUp => "Vol+",
+            MediaKey.VolumeDown => "Vol−",
+            MediaKey.Mute => "Mute",
+            MediaKey.PlayPause => "Play",
+            MediaKey.Next => "Next",
+            _ => "Prev",
+        }}").ToList();
+        return parts.Count == 0 ? Array.Empty<string>() : new[] { "Keys: " + string.Join(", ", parts) };
+    }
+
     /// <summary>"Output: device" line, then one line per shortcut.</summary>
     public static string Tooltip(string? defaultDevice, IReadOnlyList<string> lines)
     {

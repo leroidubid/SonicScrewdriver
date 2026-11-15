@@ -192,7 +192,8 @@ try {
     { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
   ],
   "StartWithWindows": false,
-  "CompetitiveMode": true
+  "CompetitiveMode": true,
+  "CompetitiveHotkey": "Ctrl+Alt+F9"
 }
 '@ | Set-Content $settingsPath -Encoding UTF8
     $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
@@ -203,8 +204,150 @@ try {
     $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
     $m = (Master).MasterVolumeLevelScalar
     Check 'Competitive mode: shortcuts are not intercepted' ($alive -and [math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("alive=$alive, target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
+
+    # 12. The competitive-mode shortcut (RegisterHotKey, no hook) works while the mode is on, and toggles both ways
+    function ToggleMode { [Kb]::Down($VK_CONTROL); [Kb]::Down(0x12); [Kb]::Press(0x78); [Kb]::Up(0x12); [Kb]::Up($VK_CONTROL); Start-Sleep -Milliseconds 800 }
+    ToggleMode   # on -> off: the keyboard hook comes back
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 500
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Mode shortcut: competitive off restores the shortcuts' ([math]::Abs($v - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $v)
+    ToggleMode   # off -> on again
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 900
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    $m = (Master).MasterVolumeLevelScalar
+    Check 'Mode shortcut: competitive on again drops the hook' ([math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
+
+    # 13. Automatic competitive mode: ping.exe on the list turns the mode on while it runs, and off when it exits
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false,
+  "AutoPrograms": [ { "ExeName": "ping.exe", "Enabled": true } ]
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    function ShiftVolDown {
+        (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+        (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+        [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 900
+        [pscustomobject]@{ Target = (TargetSession $player.Id).SimpleAudioVolume.Volume; Master = (Master).MasterVolumeLevelScalar }
+    }
+    $r = ShiftVolDown
+    Check 'Auto mode: shortcuts work while no listed program runs' ([math]::Abs($r.Target - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $r.Target)
+    $ping = Start-Process ping.exe -ArgumentList '-n', '60', '127.0.0.1' -WindowStyle Hidden -PassThru
+    Start-Sleep -Seconds 7
+    $r = ShiftVolDown
+    Check 'Auto mode: listed program running turns competitive mode on' ([math]::Abs($r.Target - 0.8) -lt 0.001 -and $r.Master -lt 0.5) ("target={0:N2}, master 0.50 -> {1:N2}" -f $r.Target, $r.Master)
+    Stop-Process -Id $ping.Id -Force
+    Start-Sleep -Seconds 7
+    $r = ShiftVolDown
+    Check 'Auto mode: program exit turns it back off' ([math]::Abs($r.Target - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $r.Target)
+
+    # 14. Remapped key: F13 acts as Vol-. Shift+F13 uses the Shift binding, a bare F13 is the real Vol- (master), no loop.
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false,
+  "KeyRemaps": [ { "Action": "VolumeDown", "Key": "F13" } ]
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    $VK_F13 = 0x7C
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_F13); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 600
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume; $m = (Master).MasterVolumeLevelScalar
+    Check 'Remap: Shift+F13 lowers the bound app' ([math]::Abs($v - 0.7) -lt 0.011 -and [math]::Abs($m - 0.5) -lt 0.005) ("target={0:N2} (expected 0.70), master {1:N2}" -f $v, $m)
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Press($VK_F13); Start-Sleep -Milliseconds 900
+    $m = (Master).MasterVolumeLevelScalar
+    Check 'Remap: bare F13 lowers the master volume once' ($m -lt 0.5 -and $m -gt 0.44) ("master 0.50 -> {0:N2}" -f $m)
+    $app.Refresh()
+    Check 'Remap: app alive, no key loop' (-not $app.HasExited) "exited=$($app.HasExited)"
+
+    # 15. Tray menu (WPF flyout): opens above the taskbar, closes on Escape and on an outside click, keyboard drives it.
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class Win {
+    public struct RECT { public int Left, Top, Right, Bottom; }
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string title);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int i);
+    [DllImport("user32.dll")] static extern bool SystemParametersInfo(uint a, uint b, out RECT r, uint c);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    public static void RightClickTray() { PostMessage(FindWindow(null, "SonicScrewdriverTray"), 0x8001, IntPtr.Zero, (IntPtr)0x205); }
+    public static void Activate(string cls) { SetForegroundWindow(FindWindow(cls, null)); }
+    public static RECT WorkArea() { RECT r; SystemParametersInfo(0x30, 0, out r, 0); return r; }
+    // Rectangle of the visible top-level window with this title in this process, or Left=-1 when none is visible.
+    public static RECT Visible(string title, uint pid) {
+        RECT found = new RECT(); found.Left = -1;
+        EnumWindows((h, l) => {
+            uint p; GetWindowThreadProcessId(h, out p);
+            var sb = new StringBuilder(256); GetWindowText(h, sb, 256);
+            if (p == pid && sb.ToString() == title && IsWindowVisible(h)) { GetWindowRect(h, out found); return false; }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+}
+"@
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    $menuTitle = 'Sonic Screwdriver menu'
+    # Put the cursor on the taskbar edge of the primary monitor, as a real click on the tray icon would.
+    Add-Type -AssemblyName System.Windows.Forms
+    $cursor0 = [Windows.Forms.Cursor]::Position
+    $wa = [Win]::WorkArea(); $taskbarBottom = $wa.Bottom -lt [Win]::GetSystemMetrics(1)
+    [void][Win]::SetCursorPos($wa.Right - 80, $(if ($taskbarBottom) { $wa.Bottom + 8 } else { $wa.Bottom - 8 }))
+    [Win]::RightClickTray(); Start-Sleep -Milliseconds 800
+    $r = [Win]::Visible($menuTitle, $app.Id)
+    Check 'Tray menu: opens inside the work area, above the taskbar' ($r.Left -ge 0 -and $r.Bottom -le $wa.Bottom -and $r.Top -ge $wa.Top -and $r.Right -le $wa.Right) ("menu {0},{1}-{2},{3}; work area bottom {4}, taskbar at bottom: {5}" -f $r.Left, $r.Top, $r.Right, $r.Bottom, $wa.Bottom, $taskbarBottom)
+    [Kb]::Press(0x1B); Start-Sleep -Milliseconds 500
+    Check 'Tray menu: Escape closes it' ([Win]::Visible($menuTitle, $app.Id).Left -eq -1) 'hidden after Escape'
+    Start-Sleep -Milliseconds 500
+    [Win]::RightClickTray(); Start-Sleep -Milliseconds 800
+    $opened = [Win]::Visible($menuTitle, $app.Id).Left -ge 0
+    [Win]::Activate('Shell_TrayWnd'); Start-Sleep -Milliseconds 600
+    Check 'Tray menu: a click elsewhere (focus lost) closes it' ($opened -and [Win]::Visible($menuTitle, $app.Id).Left -eq -1) "opened=$opened"
+    Start-Sleep -Milliseconds 500
+    [Win]::RightClickTray(); Start-Sleep -Milliseconds 800
+    [Kb]::Press(0x28); [Kb]::Press(0x28); [Kb]::Press(0x0D); Start-Sleep -Milliseconds 900   # Down, Down (Competitive mode), Enter
+    $menuClosed = [Win]::Visible($menuTitle, $app.Id).Left -eq -1
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 900
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume; $m = (Master).MasterVolumeLevelScalar
+    [Windows.Forms.Cursor]::Position = $cursor0
+    Check 'Tray menu: keyboard (Down, Down, Enter) toggles competitive mode' ($menuClosed -and [math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("menu closed=$menuClosed, target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
 }
 finally {
+    Get-Process ping -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-5) } | Stop-Process -Force -ErrorAction SilentlyContinue
     if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id -Force }
     Get-Process SonicScrewdriver -ErrorAction SilentlyContinue | Stop-Process -Force
     if ($player -and -not $player.HasExited) { Stop-Process -Id $player.Id -Force }

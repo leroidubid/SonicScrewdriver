@@ -1,0 +1,37 @@
+<Window x:Class="SonicScrewdriver.UI.TrayMenuWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Sonic Screwdriver menu" Width="300" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" ShowActivated="True">
+    <Border CornerRadius="8" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1" Padding="6">
+        <StackPanel KeyboardNavigation.DirectionalNavigation="Cycle" KeyboardNavigation.TabNavigation="Cycle">
+            <TextBlock x:Name="DeviceText" Foreground="{StaticResource FgBrush}" FontSize="12" Margin="8,6,8,2"
+                       TextTrimming="CharacterEllipsis"/>
+            <StackPanel x:Name="Lines" Margin="8,0,8,4"/>
+            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,4"/>
+            <Button x:Name="SettingsItem" AutomationProperties.Name="Settings" Style="{StaticResource MenuItemButton}" Click="Settings_Click">
+                <DockPanel>
+                    <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Width="22" VerticalAlignment="Center"/>
+                    <TextBlock Text="Settings…"/>
+                </DockPanel>
+            </Button>
+            <Button x:Name="CompetitiveItem" AutomationProperties.Name="Competitive mode" Style="{StaticResource MenuItemButton}" Click="Competitive_Click">
+                <DockPanel>
+                    <TextBlock x:Name="CompetitiveGlyph" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Width="22" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="CompetitiveHint" DockPanel.Dock="Right" Foreground="{StaticResource SubtleBrush}" FontSize="11"
+                               VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    <TextBlock Text="Competitive mode"/>
+                </DockPanel>
+            </Button>
+            <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,4"/>
+            <Button x:Name="QuitItem" AutomationProperties.Name="Quit" Style="{StaticResource MenuItemButton}" Click="Quit_Click">
+                <DockPanel>
+                    <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" Width="22" VerticalAlignment="Center"/>
+                    <TextBlock Text="Quit"/>
+                </DockPanel>
+            </Button>
+        </StackPanel>
+    </Border>
+</Window>

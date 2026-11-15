@@ -1,7 +1,8 @@
 <Window x:Class="SonicScrewdriver.UI.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Sonic Screwdriver — Shortcuts" Width="680" Height="660" MinWidth="600" MinHeight="520"
+        xmlns:ui="clr-namespace:SonicScrewdriver.UI"
+        Title="Sonic Screwdriver — Settings" Width="680" Height="660" MinWidth="600" MinHeight="520"
         WindowStartupLocation="CenterScreen" Background="#1F1F1F" Foreground="White">
     <Window.Resources>
         <Style TargetType="CheckBox">
@@ -14,33 +15,11 @@
         </Style>
     </Window.Resources>
     <DockPanel Margin="16">
-        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <TextBlock Text="Modifier shortcuts" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" Margin="0,4,0,0"
-                       Text="Each row binds a modifier combination to an application or to the output devices. It applies to Vol+, Vol−, Mute, Play/Pause, Next and Previous. Keys pressed without a modifier keep their normal behavior."/>
-            <CheckBox x:Name="CompetitiveBox" Margin="0,10,0,0" Checked="Competitive_Changed" Unchecked="Competitive_Changed"
-                      Content="Competitive mode (anti-cheat friendly)"/>
-            <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11" Margin="20,2,0,0"
-                       Text="Turns off the keyboard shortcuts, the on-screen display, the mouse wheel on the tray icon, and app icons and names, so that nothing here can be mistaken for cheating software. The mixer, sliders and output switching keep working. This lowers the risk but is no guarantee: quitting the app is safer. The options it turns off are greyed out below."/>
-        </StackPanel>
-
         <StackPanel DockPanel.Dock="Bottom">
-            <StackPanel x:Name="CycleSection">
-            <TextBlock Text="Output devices in the cycle" FontWeight="SemiBold" Margin="0,12,0,2"/>
-            <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11"
-                       Text="With an &quot;Output device&quot; shortcut, Vol+ / Vol− switch the default output through these devices."/>
-            <ItemsControl ItemsSource="{Binding CycleDevices}" Margin="0,4,0,0">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <CheckBox Content="{Binding Name}" IsChecked="{Binding Included}" Margin="0,2"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            </StackPanel>
             <ItemsControl x:Name="ErrorList" Margin="0,8,0,0">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock Text="{Binding}" Foreground="#FF6B6B"/>
+                        <TextBlock Text="{Binding}" Foreground="#FF6B6B" TextWrapping="Wrap"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -53,52 +32,114 @@
             </DockPanel>
         </StackPanel>
 
-        <Grid x:Name="ColumnHeader" DockPanel.Dock="Top" Margin="8,0,8,4">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="230"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="36"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="Modifiers" Foreground="#B3FFFFFF"/>
-            <TextBlock Grid.Column="1" Text="Target application" Foreground="#B3FFFFFF"/>
-            <TextBlock Grid.Column="2" Text="Step (%)" Foreground="#B3FFFFFF"/>
-        </Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,8,0">
+                <StackPanel x:Name="ShortcutsSection">
+                    <TextBlock Text="Modifier shortcuts" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" Margin="0,4,0,8"
+                               Text="Each row binds a modifier combination to an application or to the output devices. It applies to Vol+, Vol−, Mute, Play/Pause, Next and Previous. Keys pressed without a modifier keep their normal behavior."/>
+                    <Grid Margin="8,0,8,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="230"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="36"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Modifiers" Foreground="#B3FFFFFF"/>
+                        <TextBlock Grid.Column="1" Text="Target application" Foreground="#B3FFFFFF"/>
+                        <TextBlock Grid.Column="2" Text="Step (%)" Foreground="#B3FFFFFF"/>
+                    </Grid>
+                    <Border Background="#2B2B2B" CornerRadius="6" Padding="8">
+                        <ItemsControl x:Name="RowsList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="230"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="80"/>
+                                            <ColumnDefinition Width="36"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Orientation="Horizontal">
+                                            <CheckBox Content="Ctrl" IsChecked="{Binding Ctrl}"/>
+                                            <CheckBox Content="Shift" IsChecked="{Binding Shift}"/>
+                                            <CheckBox Content="Alt" IsChecked="{Binding Alt}"/>
+                                            <CheckBox Content="Win" IsChecked="{Binding Win}"/>
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" IsEditable="True" Margin="0,0,8,0"
+                                                  ItemsSource="{Binding DataContext.TargetChoices, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  Text="{Binding TargetText, UpdateSourceTrigger=PropertyChanged}"
+                                                  ToolTip="&quot;Foreground app&quot; or an executable name, e.g. spotify.exe"/>
+                                        <TextBox Grid.Column="2" Margin="0,0,8,0" VerticalContentAlignment="Center"
+                                                 Text="{Binding StepPercent, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <Button Grid.Column="3" Content="&#xE74D;" FontFamily="Segoe MDL2 Assets" ToolTip="Remove"
+                                                Style="{StaticResource FlatButton}" Padding="6" Click="Remove_Click" Tag="{Binding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                    <Button HorizontalAlignment="Left" Content="+ Add shortcut"
+                            Style="{StaticResource FlatButton}" Click="Add_Click" Margin="0,8,0,0"/>
 
-        <Button x:Name="AddButton" DockPanel.Dock="Bottom" HorizontalAlignment="Left" Content="+ Add shortcut"
-                Style="{StaticResource FlatButton}" Click="Add_Click" Margin="0,8,0,0"/>
+                    <TextBlock Text="Output devices in the cycle" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11"
+                               Text="With an &quot;Output device&quot; shortcut, Vol+ / Vol− switch the default output through these devices."/>
+                    <ItemsControl ItemsSource="{Binding CycleDevices}" Margin="0,4,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Content="{Binding Name}" IsChecked="{Binding Included}" Margin="0,2"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-        <Border x:Name="RowsBorder" Background="#2B2B2B" CornerRadius="6" Padding="8">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="RowsList">
+                    <TextBlock Text="Media keys" FontWeight="SemiBold" Margin="0,16,0,2"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11"
+                               Text="For keyboards without media keys: choose which key acts as each one. A remapped key works like the real media key, with the same shortcuts (Shift + your key turns down the app bound to Shift), and keeps the normal behavior of the real key when no shortcut applies. Click a box, then press the key. Remapped keys lose their usual job while Sonic Screwdriver runs (F12 no longer opens the browser developer tools). Typing keys cannot be used."/>
+                    <StackPanel x:Name="RemapPanel" Margin="0,4,0,0"/>
+                    <TextBlock x:Name="RemapError" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <TextBlock Text="Competitive mode" FontSize="18" FontWeight="SemiBold" Margin="0,20,0,0"/>
+                <CheckBox x:Name="CompetitiveBox" Margin="0,6,0,0" Checked="Competitive_Changed" Unchecked="Competitive_Changed"
+                          Content="Competitive mode (anti-cheat friendly)"/>
+                <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11" Margin="20,2,0,0"
+                           Text="Turns off the keyboard shortcuts, the on-screen display, the mouse wheel on the tray icon, and app icons and names, so that nothing here can be mistaken for cheating software. The mixer, sliders and output switching keep working. This lowers the risk but is no guarantee: quitting the app is safer. The shortcuts section above is greyed out while it is on."/>
+                <TextBlock Text="Shortcut to switch it on or off" FontWeight="SemiBold" Margin="0,10,0,2"/>
+                <StackPanel Orientation="Horizontal">
+                    <ui:KeyCaptureBox x:Name="ModeHotkeyBox" Chord="True" Width="200" Height="26"/>
+                    <Button Content="Clear" Style="{StaticResource FlatButton}" Padding="10,4" Margin="8,0,0,0" Click="ClearModeHotkey_Click"/>
+                </StackPanel>
+                <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11" Margin="0,4,0,0"
+                           Text="Click the box, then press the combination (at least one of Ctrl, Alt, Shift or Win, plus a key). It is the one shortcut that still works while the mode is on, and it does not use the keyboard hook: Windows itself matches the combination and tells this app, so no other key is seen. A short notification confirms each switch."/>
+                <TextBlock x:Name="HotkeyError" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                <TextBlock Text="Switch on automatically" FontWeight="SemiBold" Margin="0,14,0,2"/>
+                <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11"
+                           Text="Off by default. Add the games to protect: while a ticked program runs, competitive mode turns on, and it turns off again when the program exits (unless you switched it by hand). A program is spotted by its name in the process list, checked every few seconds without opening it. Nothing is polled while the list has no ticked program."/>
+                <ItemsControl x:Name="AutoList" Margin="0,6,0,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid Margin="0,4">
+                            <Grid Margin="0,2">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="230"/>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="80"/>
                                     <ColumnDefinition Width="36"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal">
-                                    <CheckBox Content="Ctrl" IsChecked="{Binding Ctrl}"/>
-                                    <CheckBox Content="Shift" IsChecked="{Binding Shift}"/>
-                                    <CheckBox Content="Alt" IsChecked="{Binding Alt}"/>
-                                    <CheckBox Content="Win" IsChecked="{Binding Win}"/>
-                                </StackPanel>
+                                <CheckBox IsChecked="{Binding Enabled}" ToolTip="Turn competitive mode on while this program runs" Margin="0,0,8,0"/>
                                 <ComboBox Grid.Column="1" IsEditable="True" Margin="0,0,8,0"
-                                          ItemsSource="{Binding DataContext.TargetChoices, RelativeSource={RelativeSource AncestorType=Window}}"
-                                          Text="{Binding TargetText, UpdateSourceTrigger=PropertyChanged}"
-                                          ToolTip="&quot;Foreground app&quot; or an executable name, e.g. spotify.exe"/>
-                                <TextBox Grid.Column="2" Margin="0,0,8,0" VerticalContentAlignment="Center"
-                                         Text="{Binding StepPercent, UpdateSourceTrigger=PropertyChanged}"/>
-                                <Button Grid.Column="3" Content="&#xE74D;" FontFamily="Segoe MDL2 Assets" ToolTip="Remove"
-                                        Style="{StaticResource FlatButton}" Padding="6" Click="Remove_Click" Tag="{Binding}"/>
+                                          ItemsSource="{Binding DataContext.AutoChoices, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          Text="{Binding ExeText, UpdateSourceTrigger=PropertyChanged}"
+                                          ToolTip="Executable name, e.g. valorant.exe"/>
+                                <Button Grid.Column="2" Content="&#xE74D;" FontFamily="Segoe MDL2 Assets" ToolTip="Remove"
+                                        Style="{StaticResource FlatButton}" Padding="6" Click="RemoveAuto_Click" Tag="{Binding}"/>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </ScrollViewer>
-        </Border>
+                <Button HorizontalAlignment="Left" Content="+ Add program" Style="{StaticResource FlatButton}"
+                        Click="AddAuto_Click" Margin="0,6,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
     </DockPanel>
 </Window>
