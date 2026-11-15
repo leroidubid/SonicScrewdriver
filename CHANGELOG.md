@@ -38,6 +38,9 @@ First public release.
 - **Competitive mode shortcut:** an optional key combination (settings window) that switches competitive mode on and
   off, with a short notification. It uses `RegisterHotKey` instead of the keyboard hook, so it keeps working while the
   hook is uninstalled and no other key is ever seen.
+- **Automatic competitive mode:** off by default. A list of programs (exe names, each with its own on/off tick) in the
+  settings window turns competitive mode on while one of them runs and off when it exits, unless you switched it by
+  hand. Detection reads the process list every 5 seconds without opening any process, and only while a program is ticked.
 
 ### Reliability
 

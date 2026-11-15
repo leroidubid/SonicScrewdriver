@@ -219,8 +219,38 @@ try {
     $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
     $m = (Master).MasterVolumeLevelScalar
     Check 'Mode shortcut: competitive on again drops the hook' ([math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
+
+    # 13. Automatic competitive mode: ping.exe on the list turns the mode on while it runs, and off when it exits
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false,
+  "AutoPrograms": [ { "ExeName": "ping.exe", "Enabled": true } ]
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    function ShiftVolDown {
+        (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+        (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+        [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 900
+        [pscustomobject]@{ Target = (TargetSession $player.Id).SimpleAudioVolume.Volume; Master = (Master).MasterVolumeLevelScalar }
+    }
+    $r = ShiftVolDown
+    Check 'Auto mode: shortcuts work while no listed program runs' ([math]::Abs($r.Target - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $r.Target)
+    $ping = Start-Process ping.exe -ArgumentList '-n', '60', '127.0.0.1' -WindowStyle Hidden -PassThru
+    Start-Sleep -Seconds 7
+    $r = ShiftVolDown
+    Check 'Auto mode: listed program running turns competitive mode on' ([math]::Abs($r.Target - 0.8) -lt 0.001 -and $r.Master -lt 0.5) ("target={0:N2}, master 0.50 -> {1:N2}" -f $r.Target, $r.Master)
+    Stop-Process -Id $ping.Id -Force
+    Start-Sleep -Seconds 7
+    $r = ShiftVolDown
+    Check 'Auto mode: program exit turns it back off' ([math]::Abs($r.Target - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $r.Target)
 }
 finally {
+    Get-Process ping -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-5) } | Stop-Process -Force -ErrorAction SilentlyContinue
     if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id -Force }
     Get-Process SonicScrewdriver -ErrorAction SilentlyContinue | Stop-Process -Force
     if ($player -and -not $player.HasExited) { Stop-Process -Id $player.Id -Force }

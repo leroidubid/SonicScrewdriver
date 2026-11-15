@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using SonicScrewdriver.Actions;
 using SonicScrewdriver.Audio;
+using SonicScrewdriver.Automation;
 using SonicScrewdriver.Bindings;
 using SonicScrewdriver.Input;
 using SonicScrewdriver.Interop;
@@ -27,6 +28,8 @@ public partial class App : Application
     private OsdWindow _osd = null!;
     private KeyboardHook? _hook;
     private GlobalHotkey? _modeHotkey;
+    private readonly AutoCompetitive _autoMode = new();
+    private readonly System.Windows.Threading.DispatcherTimer _autoTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private TrayIcon? _tray;
     private FlyoutWindow? _flyout;
     private SettingsWindow? _settingsWindow;
@@ -109,6 +112,9 @@ public partial class App : Application
         _modeHotkey.Pressed += () => SetCompetitive(!_settings.CompetitiveMode, notify: true);
         RegisterModeHotkey();
 
+        _autoTimer.Tick += (_, _) => PollAutoPrograms();
+        PollAutoPrograms();
+
         if (_store.RecoveredFromCorruption)
             _tray.Notify("Sonic Screwdriver", "Settings file was unreadable: defaults restored (backup in settings.json.bak).");
     }
@@ -133,6 +139,7 @@ public partial class App : Application
     /// <summary>Switches competitive mode from the tray menu or the shortcut, and saves the choice.</summary>
     private void SetCompetitive(bool on, bool notify)
     {
+        _autoMode.UserChanged(on); // a manual switch always wins over the automatic list
         if (on == _settings.CompetitiveMode) return;
         _settings.CompetitiveMode = on;
         ApplyMode();
@@ -140,6 +147,25 @@ public partial class App : Application
         if (notify)
             _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
                 on ? "Shortcuts, on-screen display and wheel are off." : "Shortcuts, on-screen display and wheel are back.");
+    }
+
+    /// <summary>
+    /// Every 5 s while an enabled program is listed: one snapshot of the process names (no process is opened).
+    /// Runs once more after the list changes, so that turning the last entry off also ends an automatic "on".
+    /// </summary>
+    private void PollAutoPrograms()
+    {
+        var any = _settings.AutoPrograms.Any(p => p.Enabled);
+        var running = any ? ProcessNames.Running() : new HashSet<string>();
+        var program = AutoCompetitive.FirstRunning(_settings.AutoPrograms, running);
+        if (_autoMode.Evaluate(program is not null, _settings.CompetitiveMode) is { } on)
+        {
+            _settings.CompetitiveMode = on; // not saved: it follows the program, not a preference
+            ApplyMode();
+            _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
+                on ? $"Turned on because {program} is running." : "The program has exited.");
+        }
+        _autoTimer.IsEnabled = any;
     }
 
     private void RegisterModeHotkey()
@@ -168,7 +194,11 @@ public partial class App : Application
         try
         {
             alsoDo?.Invoke();
-            _store.Save(_settings);
+            // An automatic "on" follows a running program: it is never saved as the user's preference.
+            var saved = _settings.CompetitiveMode;
+            if (_autoMode.IsAutomatic) _settings.CompetitiveMode = false;
+            try { _store.Save(_settings); }
+            finally { _settings.CompetitiveMode = saved; }
         }
         catch (Exception ex)
         {
@@ -211,12 +241,14 @@ public partial class App : Application
         {
             if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open
             var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
+            if (_settingsWindow!.CompetitiveModeEdited) _autoMode.UserChanged(s.CompetitiveMode);
             _settings = s;
             _resolver = new BindingResolver(s.Bindings);
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;
             _tray?.SetShortcuts(ShortcutSummary.Lines(s.Bindings));
             if (modeChanged) ApplyMode();
             RegisterModeHotkey();
+            PollAutoPrograms();
             TrySave(() => StartupRegistration.Set(s.StartWithWindows));
         };
         _settingsWindow.Closed += (_, _) =>
@@ -230,6 +262,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _autoTimer.Stop();
         _hook?.Dispose();
         _modeHotkey?.Dispose();
         _tray?.Dispose();

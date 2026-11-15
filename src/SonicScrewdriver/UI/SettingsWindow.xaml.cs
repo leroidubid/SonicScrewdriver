@@ -8,6 +8,7 @@ namespace SonicScrewdriver.UI;
 public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<BindingRowViewModel> _rows;
+    private readonly ObservableCollection<AutoProgramRowViewModel> _autoRows;
     private readonly bool _initialCompetitive;
 
     public event Action<AppSettings>? Saved;
@@ -16,6 +17,9 @@ public partial class SettingsWindow : Window
     public bool CompetitiveModeEdited => (CompetitiveBox.IsChecked == true) != _initialCompetitive;
 
     public List<string> TargetChoices { get; }
+
+    /// <summary>Running apps offered for the automatic list.</summary>
+    public List<string> AutoChoices { get; }
 
     /// <summary>Active output devices with a checkbox: included in the Output device cycle.</summary>
     public List<CycleDeviceItem> CycleDevices { get; }
@@ -41,6 +45,11 @@ public partial class SettingsWindow : Window
             var app = audio.GetApps().FirstOrDefault(a => string.Equals(a.ExeName, row.TargetText, StringComparison.OrdinalIgnoreCase));
             if (app is not null) row.TargetText = BindingRowViewModel.Label(app.DisplayName, app.ExeName);
         }
+
+        AutoChoices = running.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        _autoRows = new ObservableCollection<AutoProgramRowViewModel>(
+            current.AutoPrograms.Select(p => new AutoProgramRowViewModel(p.ExeName, p.Enabled)));
+        AutoList.ItemsSource = _autoRows;
 
         var all = current.CycleDeviceIds.Count == 0;
         CycleDevices = audio.GetDevices()
@@ -72,6 +81,13 @@ public partial class SettingsWindow : Window
         HotkeyError.Text = "";
     }
 
+    private void AddAuto_Click(object sender, RoutedEventArgs e) => _autoRows.Add(new AutoProgramRowViewModel("", true));
+
+    private void RemoveAuto_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: AutoProgramRowViewModel row }) _autoRows.Remove(row);
+    }
+
     private void Add_Click(object sender, RoutedEventArgs e) => _rows.Add(new BindingRowViewModel());
 
     private void Remove_Click(object sender, RoutedEventArgs e)
@@ -89,6 +105,7 @@ public partial class SettingsWindow : Window
             StartWithWindows = StartupBox.IsChecked == true,
             CompetitiveMode = CompetitiveBox.IsChecked == true,
             CompetitiveHotkey = ModeHotkeyBox.Value,
+            AutoPrograms = _autoRows.Select(r => new AutoProgram(BindingRowViewModel.ExeFromLabel(r.ExeText), r.Enabled)).ToList(),
             // All checked is stored as "all" (empty), so devices plugged in later join the cycle.
             CycleDeviceIds = CycleDevices.All(d => d.Included)
                 ? new List<string>()
@@ -102,6 +119,18 @@ public partial class SettingsWindow : Window
         Saved?.Invoke(settings);
         Close();
     }
+}
+
+/// <summary>Editable row of the automatic competitive-mode list.</summary>
+public sealed class AutoProgramRowViewModel : ObservableObject
+{
+    private bool _enabled;
+    private string _exe;
+
+    public AutoProgramRowViewModel(string exe, bool enabled) { _exe = exe; _enabled = enabled; }
+
+    public bool Enabled { get => _enabled; set { _enabled = value; Raise(); } }
+    public string ExeText { get => _exe; set { _exe = value ?? ""; Raise(); } }
 }
 
 public sealed class CycleDeviceItem

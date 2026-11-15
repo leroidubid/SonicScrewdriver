@@ -30,7 +30,8 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 - **At a glance.** The tray tooltip and menu show the current output device and your shortcuts.
 - **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
   lookups) for online games, with an optional shortcut to flip it. See [Games and anti-cheat](#games-and-anti-cheat).
-- **Light.** Around 20 MB of RAM and no CPU at idle; no polling, everything is event driven.
+- **Light.** Around 20 MB of RAM and no CPU at idle; everything is event driven (the only timer is the optional
+  automatic competitive mode, a process-name check every 5 seconds, and only if you list a program).
 
 ## Why
 
@@ -84,6 +85,13 @@ For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlE
 
 The mixer, the sliders, switching the default output and the physical media keys keep working. Competitive mode
 lowers the risk but does not remove it: quitting the app is the safest choice.
+
+**Automatic mode (off by default).** In the settings you can list the games to protect: while a ticked program runs,
+competitive mode turns on by itself, and it turns off again when the program exits. A program is spotted by its exe
+name in the Windows process list, read from one snapshot every 5 seconds: the process is never opened, so no handle
+or access right touches the game. Nothing runs while the list has no ticked program. If you switch the mode yourself,
+the automation steps aside: a mode you turned on stays on, and one you turned off stays off until the program has
+exited. An automatic "on" is not saved as your preference.
 
 **Toggle shortcut.** In the settings you can assign a key combination (for example `Ctrl+Alt+F9`) that switches
 competitive mode on and off, with a short notification each time. It has to work while the keyboard hook is

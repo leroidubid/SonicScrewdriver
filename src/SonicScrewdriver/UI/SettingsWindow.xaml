@@ -107,6 +107,32 @@
                 <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11" Margin="0,4,0,0"
                            Text="Click the box, then press the combination (at least one of Ctrl, Alt, Shift or Win, plus a key). It is the one shortcut that still works while the mode is on, and it does not use the keyboard hook: Windows itself matches the combination and tells this app, so no other key is seen. A short notification confirms each switch."/>
                 <TextBlock x:Name="HotkeyError" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                <TextBlock Text="Switch on automatically" FontWeight="SemiBold" Margin="0,14,0,2"/>
+                <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11"
+                           Text="Off by default. Add the games to protect: while a ticked program runs, competitive mode turns on, and it turns off again when the program exits (unless you switched it by hand). A program is spotted by its name in the process list, checked every few seconds without opening it. Nothing is polled while the list has no ticked program."/>
+                <ItemsControl x:Name="AutoList" Margin="0,6,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="36"/>
+                                </Grid.ColumnDefinitions>
+                                <CheckBox IsChecked="{Binding Enabled}" ToolTip="Turn competitive mode on while this program runs" Margin="0,0,8,0"/>
+                                <ComboBox Grid.Column="1" IsEditable="True" Margin="0,0,8,0"
+                                          ItemsSource="{Binding DataContext.AutoChoices, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          Text="{Binding ExeText, UpdateSourceTrigger=PropertyChanged}"
+                                          ToolTip="Executable name, e.g. valorant.exe"/>
+                                <Button Grid.Column="2" Content="&#xE74D;" FontFamily="Segoe MDL2 Assets" ToolTip="Remove"
+                                        Style="{StaticResource FlatButton}" Padding="6" Click="RemoveAuto_Click" Tag="{Binding}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button HorizontalAlignment="Left" Content="+ Add program" Style="{StaticResource FlatButton}"
+                        Click="AddAuto_Click" Margin="0,6,0,0"/>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>
