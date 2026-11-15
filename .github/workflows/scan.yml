@@ -63,5 +63,6 @@ jobs:
         run: |
           {
             echo "### VirusTotal"
-            echo "$ANALYSIS" | tr ',' '\n' | sed 's/^\(.*\)=\(.*\)$/- \1: \2/'
+            # "file=url" pairs; the url itself ends with "=", so split on the first "=" only
+            echo "$ANALYSIS" | tr ',' '\n' | sed -E 's|^scan[\\/]||; s|^([^=]+)=(.*)$|- [\1](\2)|'
           } >> "$GITHUB_STEP_SUMMARY"
