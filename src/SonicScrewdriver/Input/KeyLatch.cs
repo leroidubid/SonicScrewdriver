@@ -21,6 +21,9 @@ public sealed class KeyLatch<T> where T : class
     /// <summary>Ends the press; true when its key-down was swallowed (so the key-up must be too).</summary>
     public bool OnUp(int vk) => _held.Remove(vk, out var latched) && latched is not null;
 
+    /// <summary>Like <see cref="OnUp(int)"/>, and hands back the decision latched for the press.</summary>
+    public bool OnUp(int vk, out T? latched) => _held.Remove(vk, out latched) && latched is not null;
+
     /// <summary>Forgets every press (used when the hook is reinstalled).</summary>
     public void Clear() => _held.Clear();
 }

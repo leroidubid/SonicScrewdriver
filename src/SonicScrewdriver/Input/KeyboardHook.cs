@@ -16,17 +16,20 @@ public sealed class KeyboardHook : IDisposable
     /// <summary>Unassigned virtual key injected to "mask" a lone Alt/Win press (as AutoHotkey does).</summary>
     private const byte VK_MASK = 0xE8;
 
-    private readonly Func<Modifiers, KeyBinding?> _resolve;
+    /// <summary>Tags the media keys this hook injects for a remapped key, so it never processes its own events.</summary>
+    private static readonly UIntPtr InjectedMarker = new(0x5353_4B52);
+
+    private readonly Func<KeyDecider> _decider;
     private readonly Action<KeyBinding, MediaKey> _onAction;
     private readonly LowLevelKeyboardProc _proc; // kept in a field so the GC never collects it
-    private readonly KeyLatch<KeyBinding> _latch = new(); // touched only on the hook thread
+    private readonly KeyLatch<KeyDecision> _latch = new(); // touched only on the hook thread
     private Thread? _thread;
     private uint _threadId;
     private IntPtr _hook;
 
-    public KeyboardHook(Func<Modifiers, KeyBinding?> resolve, Action<KeyBinding, MediaKey> onAction)
+    public KeyboardHook(Func<KeyDecider> decider, Action<KeyBinding, MediaKey> onAction)
     {
-        _resolve = resolve;
+        _decider = decider;
         _onAction = onAction;
         _proc = HookProc;
     }
@@ -81,21 +84,31 @@ public sealed class KeyboardHook : IDisposable
             var msg = (int)wParam;
             var vk = (int)data.vkCode;
 
-            // Injected events are processed too: vendor keyboard utilities and AutoHotkey
-            // commonly inject media keys. SonicScrewdriver only injects VK_MASK, which is not a media key.
+            if ((nuint)(nint)data.dwExtraInfo == (nuint)InjectedMarker) return CallNextHookEx(_hook, nCode, wParam, lParam);
+
+            // Other injected events are processed too: vendor keyboard utilities and AutoHotkey
+            // commonly inject media keys. SonicScrewdriver only injects VK_MASK (not a media key) and
+            // the tagged media keys above.
             if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN)
             {
-                if (MediaKeyMap.FromVirtualKey(vk) is { } key)
+                var decider = _decider();
+                if (decider.IsHandled(vk))
                 {
                     try
                     {
                         Modifiers mods = Modifiers.None;
-                        var binding = _latch.OnDown(vk, () => _resolve(mods = CurrentModifiers()), out var isRepeat);
-                        if (binding is not null)
+                        var decision = _latch.OnDown(vk, () => decider.Decide(vk, mods = CurrentModifiers()), out var isRepeat);
+                        if (decision is not null)
                         {
-                            if (!isRepeat && (mods & (Modifiers.Alt | Modifiers.Win)) != 0) InjectMask();
+                            var key = decision.Key;
                             // Volume keys repeat while held; toggles and track skips act once per press.
-                            if (!isRepeat || key is MediaKey.VolumeUp or MediaKey.VolumeDown) _onAction(binding, key);
+                            var acts = !isRepeat || key is MediaKey.VolumeUp or MediaKey.VolumeDown;
+                            if (decision.Binding is { } binding)
+                            {
+                                if (!isRepeat && (mods & (Modifiers.Alt | Modifiers.Win)) != 0) InjectMask();
+                                if (acts) _onAction(binding, key);
+                            }
+                            else if (acts) SendMediaKey(key, up: false); // remapped key, no shortcut: act as the real key
                             return (IntPtr)1;
                         }
                     }
@@ -104,7 +117,11 @@ public sealed class KeyboardHook : IDisposable
             }
             else if (msg == WM_KEYUP || msg == WM_SYSKEYUP)
             {
-                if (_latch.OnUp(vk)) return (IntPtr)1;
+                if (_latch.OnUp(vk, out var decision))
+                {
+                    if (decision!.Binding is null) SendMediaKey(decision.Key, up: true);
+                    return (IntPtr)1;
+                }
             }
         }
         return CallNextHookEx(_hook, nCode, wParam, lParam);
@@ -118,6 +135,19 @@ public sealed class KeyboardHook : IDisposable
     {
         keybd_event(VK_MASK, 0, 0, UIntPtr.Zero);
         keybd_event(VK_MASK, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
+
+    /// <summary>Sends the real media key for a remapped one, tagged so the hook lets it through.</summary>
+    private static void SendMediaKey(MediaKey key, bool up)
+    {
+        var input = new INPUT { type = INPUT_KEYBOARD };
+        input.u.ki = new KEYBDINPUT
+        {
+            wVk = (ushort)MediaKeyMap.ToVirtualKey(key),
+            dwFlags = KEYEVENTF_EXTENDEDKEY | (up ? KEYEVENTF_KEYUP : 0),
+            dwExtraInfo = InjectedMarker,
+        };
+        SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
     }
 
     public void Dispose()

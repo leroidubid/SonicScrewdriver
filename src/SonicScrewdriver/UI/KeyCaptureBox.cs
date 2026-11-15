@@ -22,6 +22,9 @@ public sealed class KeyCaptureBox : TextBox
         set { _value = value; ShowValue(); }
     }
 
+    /// <summary>Extra check on a captured value: returns an error message, or null to accept it.</summary>
+    public Func<string, string?>? Validator { get; set; }
+
     /// <summary>A pressed key was refused (the argument says why).</summary>
     public event Action<string>? Rejected;
 
@@ -64,6 +67,7 @@ public sealed class KeyCaptureBox : TextBox
         }
         else if (name is null || !KeyNames.IsRemappable(vk))
             Rejected?.Invoke("Use a function key (F1–F24), Pause, Scroll Lock, Insert, Home, End, Page Up/Down or a numpad key: typing keys are not allowed.");
+        else if (Validator?.Invoke(name) is { } error) Rejected?.Invoke(error);
         else Accept(name);
     }
 

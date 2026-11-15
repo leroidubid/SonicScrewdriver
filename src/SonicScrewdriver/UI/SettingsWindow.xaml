@@ -92,6 +92,12 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <TextBlock Text="Media keys" FontWeight="SemiBold" Margin="0,16,0,2"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#B3FFFFFF" FontSize="11"
+                               Text="For keyboards without media keys: choose which key acts as each one. A remapped key works like the real media key, with the same shortcuts (Shift + your key turns down the app bound to Shift), and keeps the normal behavior of the real key when no shortcut applies. Click a box, then press the key. Remapped keys lose their usual job while Sonic Screwdriver runs (F12 no longer opens the browser developer tools). Typing keys cannot be used."/>
+                    <StackPanel x:Name="RemapPanel" Margin="0,4,0,0"/>
+                    <TextBlock x:Name="RemapError" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,4,0,0"/>
                 </StackPanel>
 
                 <TextBlock Text="Competitive mode" FontSize="18" FontWeight="SemiBold" Margin="0,20,0,0"/>

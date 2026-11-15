@@ -19,6 +19,10 @@ First public release.
   - **The foreground app.**
   - **Output devices:** Vol+ / Vol− cycle the default output through a chosen list of devices
     (all enabled devices by default).
+- **Remap media keys:** choose which physical keys (F1–F24, Pause, Scroll Lock, Insert, Home, End, Page Up/Down,
+  numpad) act as Vol+, Vol−, Mute, Play/Pause, Next and Previous. A remapped key resolves through the same shortcuts
+  as the real key; without a shortcut it is replaced by the real media key (sent with `SendInput`, tagged so the hook
+  ignores it). The tray tooltip and menu list the remaps. Off in competitive mode.
 - **Pass-through:** media keys without a modifier, or with an unbound combination, keep their normal
   Windows behavior.
 - **On-screen display:** shows the app icon, its name and the new level, without stealing focus.

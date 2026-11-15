@@ -20,6 +20,11 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   - **a specific app** (`spotify.exe`, `discord.exe`, …): volume, mute and media control for that app only;
   - **the foreground app**: whatever window has focus;
   - **output devices**: Vol+ / Vol− cycle the default output through the devices you choose.
+- **Remap the media keys.** No media keys on your keyboard (compact keyboards, laptops where they sit behind `Fn`)?
+  In the settings, choose which key acts as Vol+, Vol−, Mute, Play/Pause, Next and Previous (for example F10, F11,
+  F12). A remapped key works exactly like the real one: `Shift + F11` turns down the app bound to Shift, a bare
+  `F11` lowers the master volume. A remapped key loses its usual job while the app runs, and the remaps are off in
+  competitive mode (they need the keyboard hook).
 - **Media keys stay normal.** A media key without a modifier, or with an unbound combination, keeps
   its usual Windows behavior.
 - **On-screen display.** A small, non-intrusive overlay shows the app icon, its name and the new level.
@@ -78,7 +83,7 @@ For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlE
 
 | Switched off | What you lose |
 |---|---|
-| The keyboard hook | All modifier + media key shortcuts, and output device cycling |
+| The keyboard hook | All modifier + media key shortcuts, remapped media keys, and output device cycling |
 | The on-screen display | The overlay shown after a shortcut |
 | Mouse wheel on the tray icon | Master volume with the wheel |
 | Lookups of other programs | App icons and friendly names (the exe name and a generic icon are shown instead) |

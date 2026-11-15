@@ -23,6 +23,7 @@ public partial class App : Application
     private SettingsStore _store = null!;
     private AppSettings _settings = null!;
     private volatile BindingResolver _resolver = new(Array.Empty<KeyBinding>());
+    private volatile KeyDecider _decider = new(KeyRemapMap.Empty, _ => null);
     private AudioSessionService _audio = null!;
     private ActionDispatcher _dispatcher = null!;
     private OsdWindow _osd = null!;
@@ -84,7 +85,7 @@ public partial class App : Application
         _settings = _store.Load();
         _settings.StartWithWindows = StartupRegistration.IsEnabled(); // the installer may have set it
         ProcessInfo.Minimal = _settings.CompetitiveMode; // before any session is listed
-        _resolver = new BindingResolver(_settings.Bindings);
+        RebuildDecider();
 
         _audio = new AudioSessionService();
         _osd = new OsdWindow();
@@ -92,7 +93,7 @@ public partial class App : Application
         _dispatcher.CycleDeviceIds = _settings.CycleDeviceIds;
         _tray = new TrayIcon();
         _tray.DefaultDeviceName = () => _audio.GetDevices().FirstOrDefault(d => d.IsDefault)?.Name;
-        _tray.SetShortcuts(ShortcutSummary.Lines(_settings.Bindings));
+        _tray.SetShortcuts(ShortcutLines(_settings));
         _tray.OpenFlyoutRequested += (_, _) => ShowFlyout();
         _tray.OpenSettingsRequested += (_, _) => OpenSettings();
         _tray.ExitRequested += (_, _) => Shutdown();
@@ -104,7 +105,7 @@ public partial class App : Application
             _osd.Show(null, "Master volume", $"{(int)MathF.Round(v * 100)} %");
         };
 
-        _hook = new KeyboardHook(mods => _resolver.Resolve(mods), OnMediaAction);
+        _hook = new KeyboardHook(() => _decider, OnMediaAction);
         ApplyMode(runtimeChange: false);
 
         // RegisterHotKey, not the keyboard hook: it keeps working while competitive mode has uninstalled the hook.
@@ -135,6 +136,17 @@ public partial class App : Application
         // Start the session list over: drops process handles when entering the mode, rediscovers names and icons when leaving it.
         if (runtimeChange) _audio.Reset();
     }
+
+    /// <summary>The bindings and key remaps become what the keyboard hook decides with (read on the hook thread).</summary>
+    private void RebuildDecider()
+    {
+        _resolver = new BindingResolver(_settings.Bindings);
+        var resolver = _resolver;
+        _decider = new KeyDecider(KeyRemapMap.From(_settings.KeyRemaps.Select(r => (r.Action, r.Key))), mods => resolver.Resolve(mods));
+    }
+
+    private static IReadOnlyList<string> ShortcutLines(AppSettings s) =>
+        ShortcutSummary.Lines(s.Bindings).Concat(ShortcutSummary.RemapLines(s.KeyRemaps)).ToList();
 
     /// <summary>Switches competitive mode from the tray menu or the shortcut, and saves the choice.</summary>
     private void SetCompetitive(bool on, bool notify)
@@ -243,9 +255,9 @@ public partial class App : Application
             var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
             if (_settingsWindow!.CompetitiveModeEdited) _autoMode.UserChanged(s.CompetitiveMode);
             _settings = s;
-            _resolver = new BindingResolver(s.Bindings);
+            RebuildDecider();
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;
-            _tray?.SetShortcuts(ShortcutSummary.Lines(s.Bindings));
+            _tray?.SetShortcuts(ShortcutLines(s));
             if (modeChanged) ApplyMode();
             RegisterModeHotkey();
             PollAutoPrograms();

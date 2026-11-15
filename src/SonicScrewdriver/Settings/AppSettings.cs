@@ -25,6 +25,10 @@ public sealed class AppSettings
     /// Empty by default, so the feature is off until the user adds one.
     /// </summary>
     public List<AutoProgram> AutoPrograms { get; set; } = new();
+
+    /// <summary>Physical keys that act as media keys (one key per action), for keyboards without them.</summary>
+    public List<KeyRemap> KeyRemaps { get; set; } = new();
+
     /// <summary>Output devices included in the cycle (MMDevice IDs); empty means every active device.</summary>
     public List<string> CycleDeviceIds { get; set; } = new();
 
@@ -50,6 +54,15 @@ public sealed class AppSettings
                 errors.Add($"{label}: step must be between 1 and 50 %.");
             if (b.Target is null || (b.Target.Kind == TargetKind.Process && string.IsNullOrWhiteSpace(b.Target.ExeName)))
                 errors.Add($"{label}: enter a target application.");
+        }
+        var remapKeys = new HashSet<int>();
+        var remapActions = new HashSet<MediaKey>();
+        foreach (var r in KeyRemaps)
+        {
+            if (!KeyNames.TryGetVirtualKey(r.Key, out var vk) || !KeyNames.IsRemappable(vk))
+                errors.Add($"Media keys: \"{r.Key}\" cannot be used (function keys, Pause, Scroll Lock, Insert, Home, End, Page Up/Down and the numpad only).");
+            else if (!remapKeys.Add(vk)) errors.Add($"Media keys: {KeyNames.NameOf(vk)} is assigned to two actions.");
+            if (!remapActions.Add(r.Action)) errors.Add($"Media keys: {r.Action} has two keys.");
         }
         var programs = new HashSet<string>();
         for (var i = 0; i < AutoPrograms.Count; i++)

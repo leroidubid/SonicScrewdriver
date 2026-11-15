@@ -248,6 +248,31 @@ try {
     Start-Sleep -Seconds 7
     $r = ShiftVolDown
     Check 'Auto mode: program exit turns it back off' ([math]::Abs($r.Target - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $r.Target)
+
+    # 14. Remapped key: F13 acts as Vol-. Shift+F13 uses the Shift binding, a bare F13 is the real Vol- (master), no loop.
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false,
+  "KeyRemaps": [ { "Action": "VolumeDown", "Key": "F13" } ]
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    $VK_F13 = 0x7C
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_F13); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 600
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume; $m = (Master).MasterVolumeLevelScalar
+    Check 'Remap: Shift+F13 lowers the bound app' ([math]::Abs($v - 0.7) -lt 0.011 -and [math]::Abs($m - 0.5) -lt 0.005) ("target={0:N2} (expected 0.70), master {1:N2}" -f $v, $m)
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Press($VK_F13); Start-Sleep -Milliseconds 900
+    $m = (Master).MasterVolumeLevelScalar
+    Check 'Remap: bare F13 lowers the master volume once' ($m -lt 0.5 -and $m -gt 0.44) ("master 0.50 -> {0:N2}" -f $m)
+    $app.Refresh()
+    Check 'Remap: app alive, no key loop' (-not $app.HasExited) "exited=$($app.HasExited)"
 }
 finally {
     Get-Process ping -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -gt (Get-Date).AddMinutes(-5) } | Stop-Process -Force -ErrorAction SilentlyContinue

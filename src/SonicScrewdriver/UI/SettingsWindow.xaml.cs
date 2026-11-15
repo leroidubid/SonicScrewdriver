@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
 using SonicScrewdriver.Audio;
+using SonicScrewdriver.Input;
 using SonicScrewdriver.Settings;
 
 namespace SonicScrewdriver.UI;
@@ -9,6 +11,7 @@ public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<BindingRowViewModel> _rows;
     private readonly ObservableCollection<AutoProgramRowViewModel> _autoRows;
+    private readonly List<(MediaKey Action, KeyCaptureBox Box)> _remapBoxes = new();
     private readonly bool _initialCompetitive;
 
     public event Action<AppSettings>? Saved;
@@ -56,6 +59,7 @@ public partial class SettingsWindow : Window
             .Select(d => new CycleDeviceItem(d.Id, d.Name) { Included = all || current.CycleDeviceIds.Contains(d.Id) })
             .ToList();
 
+        BuildRemapRows(current);
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
@@ -73,6 +77,35 @@ public partial class SettingsWindow : Window
         var shortcutsOn = CompetitiveBox.IsChecked != true;
         ShortcutsSection.IsEnabled = shortcutsOn;
         ShortcutsSection.Opacity = shortcutsOn ? 1 : 0.4;
+    }
+
+    private static readonly (MediaKey Action, string Label)[] RemapActions =
+    {
+        (MediaKey.VolumeUp, "Volume up"), (MediaKey.VolumeDown, "Volume down"), (MediaKey.Mute, "Mute"),
+        (MediaKey.PlayPause, "Play / Pause"), (MediaKey.Next, "Next track"), (MediaKey.Previous, "Previous track"),
+    };
+
+    /// <summary>One row per media key: its label, a box that records the next key press, and Clear.</summary>
+    private void BuildRemapRows(AppSettings current)
+    {
+        foreach (var (action, label) in RemapActions)
+        {
+            var box = new KeyCaptureBox { Width = 160, Height = 26, Value = current.KeyRemaps.FirstOrDefault(r => r.Action == action)?.Key };
+            box.Validator = key =>
+            {
+                var other = _remapBoxes.FirstOrDefault(r => r.Action != action && string.Equals(r.Box.Value, key, StringComparison.OrdinalIgnoreCase));
+                return other.Box is null ? null : $"{key} is already used for {RemapActions.First(a => a.Action == other.Action).Label}. Clear it first.";
+            };
+            box.Rejected += message => RemapError.Text = message;
+            var clear = new Button { Content = "Clear", Style = (Style)FindResource("FlatButton"), Padding = new Thickness(10, 4, 10, 4), Margin = new Thickness(8, 0, 0, 0) };
+            clear.Click += (_, _) => { box.Value = null; RemapError.Text = ""; };
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
+            row.Children.Add(new TextBlock { Text = label, Width = 130, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(box);
+            row.Children.Add(clear);
+            RemapPanel.Children.Add(row);
+            _remapBoxes.Add((action, box));
+        }
     }
 
     private void ClearModeHotkey_Click(object sender, RoutedEventArgs e)
@@ -105,6 +138,7 @@ public partial class SettingsWindow : Window
             StartWithWindows = StartupBox.IsChecked == true,
             CompetitiveMode = CompetitiveBox.IsChecked == true,
             CompetitiveHotkey = ModeHotkeyBox.Value,
+            KeyRemaps = _remapBoxes.Where(r => r.Box.Value is not null).Select(r => new KeyRemap(r.Action, r.Box.Value!)).ToList(),
             AutoPrograms = _autoRows.Select(r => new AutoProgram(BindingRowViewModel.ExeFromLabel(r.ExeText), r.Enabled)).ToList(),
             // All checked is stored as "all" (empty), so devices plugged in later join the cycle.
             CycleDeviceIds = CycleDevices.All(d => d.Included)

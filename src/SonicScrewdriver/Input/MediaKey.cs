@@ -19,6 +19,16 @@ public static class MediaKeyMap
     public const int VK_MEDIA_PREV_TRACK = 0xB1;
     public const int VK_MEDIA_PLAY_PAUSE = 0xB3;
 
+    public static int ToVirtualKey(MediaKey key) => key switch
+    {
+        MediaKey.VolumeUp => VK_VOLUME_UP,
+        MediaKey.VolumeDown => VK_VOLUME_DOWN,
+        MediaKey.Mute => VK_VOLUME_MUTE,
+        MediaKey.PlayPause => VK_MEDIA_PLAY_PAUSE,
+        MediaKey.Next => VK_MEDIA_NEXT_TRACK,
+        _ => VK_MEDIA_PREV_TRACK,
+    };
+
     public static MediaKey? FromVirtualKey(int vk) => vk switch
     {
         VK_VOLUME_UP => MediaKey.VolumeUp,
