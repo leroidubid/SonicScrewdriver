@@ -192,7 +192,8 @@ try {
     { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
   ],
   "StartWithWindows": false,
-  "CompetitiveMode": true
+  "CompetitiveMode": true,
+  "CompetitiveHotkey": "Ctrl+Alt+F9"
 }
 '@ | Set-Content $settingsPath -Encoding UTF8
     $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
@@ -203,6 +204,21 @@ try {
     $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
     $m = (Master).MasterVolumeLevelScalar
     Check 'Competitive mode: shortcuts are not intercepted' ($alive -and [math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("alive=$alive, target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
+
+    # 12. The competitive-mode shortcut (RegisterHotKey, no hook) works while the mode is on, and toggles both ways
+    function ToggleMode { [Kb]::Down($VK_CONTROL); [Kb]::Down(0x12); [Kb]::Press(0x78); [Kb]::Up(0x12); [Kb]::Up($VK_CONTROL); Start-Sleep -Milliseconds 800 }
+    ToggleMode   # on -> off: the keyboard hook comes back
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 500
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Mode shortcut: competitive off restores the shortcuts' ([math]::Abs($v - 0.7) -lt 0.011) ("target={0:N2} (expected 0.70)" -f $v)
+    ToggleMode   # off -> on again
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    (Master).MasterVolumeLevelScalar = 0.5; Start-Sleep -Milliseconds 200
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_DOWN); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 900
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    $m = (Master).MasterVolumeLevelScalar
+    Check 'Mode shortcut: competitive on again drops the hook' ([math]::Abs($v - 0.8) -lt 0.001 -and $m -lt 0.5) ("target={0:N2}, master 0.50 -> {1:N2}" -f $v, $m)
 }
 finally {
     if ($app -and -not $app.HasExited) { Stop-Process -Id $app.Id -Force }

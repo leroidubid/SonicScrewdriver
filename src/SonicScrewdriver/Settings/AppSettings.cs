@@ -13,6 +13,12 @@ public sealed class AppSettings
     /// on the tray icon, and the process lookups behind app icons and friendly names.
     /// </summary>
     public bool CompetitiveMode { get; set; }
+
+    /// <summary>
+    /// Key combination that toggles competitive mode, e.g. "Ctrl+Alt+F9"; null or empty means none.
+    /// Registered with RegisterHotKey, not the keyboard hook, so it works while competitive mode is on.
+    /// </summary>
+    public string? CompetitiveHotkey { get; set; }
     /// <summary>Output devices included in the cycle (MMDevice IDs); empty means every active device.</summary>
     public List<string> CycleDeviceIds { get; set; } = new();
 
@@ -39,6 +45,8 @@ public sealed class AppSettings
             if (b.Target is null || (b.Target.Kind == TargetKind.Process && string.IsNullOrWhiteSpace(b.Target.ExeName)))
                 errors.Add($"{label}: enter a target application.");
         }
+        if (!string.IsNullOrWhiteSpace(CompetitiveHotkey) && !Hotkey.TryParse(CompetitiveHotkey, out _))
+            errors.Add("Competitive mode shortcut: use at least one modifier plus a key, e.g. Ctrl+Alt+F9.");
         return errors;
     }
 }

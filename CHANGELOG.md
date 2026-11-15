@@ -35,6 +35,9 @@ First public release.
 - **Competitive mode:** one switch (tray menu or settings) turns off the keyboard hook, the on-screen display, the
   mouse wheel on the tray icon and the lookups of other programs, so nothing can be mistaken for cheating software
   by an anti-cheat. The options it turns off are greyed out in the settings window.
+- **Competitive mode shortcut:** an optional key combination (settings window) that switches competitive mode on and
+  off, with a short notification. It uses `RegisterHotKey` instead of the keyboard hook, so it keeps working while the
+  hook is uninstalled and no other key is ever seen.
 
 ### Reliability
 

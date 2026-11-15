@@ -42,6 +42,7 @@ public sealed class SettingsStore
             s.Bindings ??= AppSettings.CreateDefault().Bindings;
             s.Bindings = Sanitize(s.Bindings);
             s.CycleDeviceIds ??= new List<string>();
+            s.CompetitiveHotkey = Input.Hotkey.TryParse(s.CompetitiveHotkey, out var hotkey) ? hotkey.ToString() : null;
             return s;
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)

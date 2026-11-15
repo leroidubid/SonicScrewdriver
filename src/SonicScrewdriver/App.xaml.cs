@@ -26,6 +26,7 @@ public partial class App : Application
     private ActionDispatcher _dispatcher = null!;
     private OsdWindow _osd = null!;
     private KeyboardHook? _hook;
+    private GlobalHotkey? _modeHotkey;
     private TrayIcon? _tray;
     private FlyoutWindow? _flyout;
     private SettingsWindow? _settingsWindow;
@@ -92,12 +93,7 @@ public partial class App : Application
         _tray.OpenFlyoutRequested += (_, _) => ShowFlyout();
         _tray.OpenSettingsRequested += (_, _) => OpenSettings();
         _tray.ExitRequested += (_, _) => Shutdown();
-        _tray.CompetitiveModeToggled += (_, on) =>
-        {
-            _settings.CompetitiveMode = on;
-            ApplyMode();
-            TrySave();
-        };
+        _tray.CompetitiveModeToggled += (_, on) => SetCompetitive(on, notify: false);
         _tray.WheelScrolled += (_, notches) =>
         {
             var v = Math.Clamp(_audio.MasterVolume + notches * (float)(WheelVolume.StepPerNotch / 100), 0f, 1f);
@@ -107,6 +103,11 @@ public partial class App : Application
 
         _hook = new KeyboardHook(mods => _resolver.Resolve(mods), OnMediaAction);
         ApplyMode(runtimeChange: false);
+
+        // RegisterHotKey, not the keyboard hook: it keeps working while competitive mode has uninstalled the hook.
+        _modeHotkey = new GlobalHotkey();
+        _modeHotkey.Pressed += () => SetCompetitive(!_settings.CompetitiveMode, notify: true);
+        RegisterModeHotkey();
 
         if (_store.RecoveredFromCorruption)
             _tray.Notify("Sonic Screwdriver", "Settings file was unreadable: defaults restored (backup in settings.json.bak).");
@@ -127,6 +128,25 @@ public partial class App : Application
         else InstallHook();
         // Start the session list over: drops process handles when entering the mode, rediscovers names and icons when leaving it.
         if (runtimeChange) _audio.Reset();
+    }
+
+    /// <summary>Switches competitive mode from the tray menu or the shortcut, and saves the choice.</summary>
+    private void SetCompetitive(bool on, bool notify)
+    {
+        if (on == _settings.CompetitiveMode) return;
+        _settings.CompetitiveMode = on;
+        ApplyMode();
+        TrySave();
+        if (notify)
+            _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
+                on ? "Shortcuts, on-screen display and wheel are off." : "Shortcuts, on-screen display and wheel are back.");
+    }
+
+    private void RegisterModeHotkey()
+    {
+        Hotkey? hotkey = Hotkey.TryParse(_settings.CompetitiveHotkey, out var h) ? h : null;
+        if (!_modeHotkey!.Register(hotkey))
+            _tray?.Notify("Sonic Screwdriver", $"The shortcut {hotkey} for competitive mode is already used by another program.");
     }
 
     private void InstallHook()
@@ -189,12 +209,14 @@ public partial class App : Application
         _settingsWindow = new SettingsWindow(_settings, _audio);
         _settingsWindow.Saved += s =>
         {
+            if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open
             var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
             _settings = s;
             _resolver = new BindingResolver(s.Bindings);
             _dispatcher.CycleDeviceIds = s.CycleDeviceIds;
             _tray?.SetShortcuts(ShortcutSummary.Lines(s.Bindings));
             if (modeChanged) ApplyMode();
+            RegisterModeHotkey();
             TrySave(() => StartupRegistration.Set(s.StartWithWindows));
         };
         _settingsWindow.Closed += (_, _) =>
@@ -209,6 +231,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _hook?.Dispose();
+        _modeHotkey?.Dispose();
         _tray?.Dispose();
         _audio?.Dispose();
         _showWait?.Unregister(null);

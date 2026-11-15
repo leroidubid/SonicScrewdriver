@@ -8,8 +8,12 @@ namespace SonicScrewdriver.UI;
 public partial class SettingsWindow : Window
 {
     private readonly ObservableCollection<BindingRowViewModel> _rows;
+    private readonly bool _initialCompetitive;
 
     public event Action<AppSettings>? Saved;
+
+    /// <summary>True when the user changed the checkbox: otherwise the live state (a shortcut may have toggled it) wins.</summary>
+    public bool CompetitiveModeEdited => (CompetitiveBox.IsChecked == true) != _initialCompetitive;
 
     public List<string> TargetChoices { get; }
 
@@ -46,7 +50,9 @@ public partial class SettingsWindow : Window
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
-        CompetitiveBox.IsChecked = current.CompetitiveMode;
+        CompetitiveBox.IsChecked = _initialCompetitive = current.CompetitiveMode;
+        ModeHotkeyBox.Value = current.CompetitiveHotkey;
+        ModeHotkeyBox.Rejected += message => HotkeyError.Text = message;
         ApplyCompetitiveState();
     }
 
@@ -56,11 +62,14 @@ public partial class SettingsWindow : Window
     private void ApplyCompetitiveState()
     {
         var shortcutsOn = CompetitiveBox.IsChecked != true;
-        foreach (UIElement element in new UIElement[] { ColumnHeader, AddButton, RowsBorder, CycleSection })
-        {
-            element.IsEnabled = shortcutsOn;
-            element.Opacity = shortcutsOn ? 1 : 0.4;
-        }
+        ShortcutsSection.IsEnabled = shortcutsOn;
+        ShortcutsSection.Opacity = shortcutsOn ? 1 : 0.4;
+    }
+
+    private void ClearModeHotkey_Click(object sender, RoutedEventArgs e)
+    {
+        ModeHotkeyBox.Value = null;
+        HotkeyError.Text = "";
     }
 
     private void Add_Click(object sender, RoutedEventArgs e) => _rows.Add(new BindingRowViewModel());
@@ -79,6 +88,7 @@ public partial class SettingsWindow : Window
             Bindings = _rows.Select(r => r.ToBinding()).ToList(),
             StartWithWindows = StartupBox.IsChecked == true,
             CompetitiveMode = CompetitiveBox.IsChecked == true,
+            CompetitiveHotkey = ModeHotkeyBox.Value,
             // All checked is stored as "all" (empty), so devices plugged in later join the cycle.
             CycleDeviceIds = CycleDevices.All(d => d.Included)
                 ? new List<string>()

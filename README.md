@@ -29,7 +29,7 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   change that app.
 - **At a glance.** The tray tooltip and menu show the current output device and your shortcuts.
 - **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
-  lookups) for online games. See [Games and anti-cheat](#games-and-anti-cheat).
+  lookups) for online games, with an optional shortcut to flip it. See [Games and anti-cheat](#games-and-anti-cheat).
 - **Light.** Around 20 MB of RAM and no CPU at idle; no polling, everything is event driven.
 
 ## Why
@@ -84,6 +84,14 @@ For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlE
 
 The mixer, the sliders, switching the default output and the physical media keys keep working. Competitive mode
 lowers the risk but does not remove it: quitting the app is the safest choice.
+
+**Toggle shortcut.** In the settings you can assign a key combination (for example `Ctrl+Alt+F9`) that switches
+competitive mode on and off, with a short notification each time. It has to work while the keyboard hook is
+uninstalled, so it does not use a hook: it is registered with the Windows `RegisterHotKey` function, where Windows
+itself matches the combination and tells the app. The app never sees any other key. The trade-off: this is a
+documented, ordinary API that many programs use and is much less intrusive than a hook, but it is still one
+registration that stays active in competitive mode. If you want nothing at all, leave the shortcut empty (the default)
+and use the tray menu, or quit the app.
 
 ## Security
 
