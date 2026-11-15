@@ -16,9 +16,9 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
@@ -58,7 +58,7 @@ jobs:
 
       # Not a release asset (winget only needs the installer URL and hash): kept on the run for submission.
       - name: Keep winget manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: winget-manifest-${{ steps.v.outputs.version }}
           path: publish/winget-${{ steps.v.outputs.version }}
@@ -66,7 +66,7 @@ jobs:
       # Signed proof that these files were built by this workflow from this commit.
       # Verify with: gh attestation verify <file> --repo <owner>/<repo>
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             publish/SonicScrewdriver.exe
