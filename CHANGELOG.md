@@ -39,7 +39,7 @@ First public release.
   200 % scale) are hand-placed pixel art, so the screwdriver stays readable; larger sizes keep the smooth drawing. The
   red competitive-mode icon now turns only the green emitter and sound arcs red, keeping the steel and grip neutral.
 - **Settings window:** one card per topic, with modifier chips, switches, styled fields and a dark title bar.
-- **Installer:** per-user Inno Setup installer that needs no admin rights, with a Start menu
+- **Installer:** available in English, French, German, Spanish, Italian and Brazilian Portuguese. It is a per-user Inno Setup installer that needs no admin rights, with a Start menu
   shortcut, an optional start with Windows, a .NET 8 Desktop Runtime check and a clean uninstall.
   A portable single-file exe is also provided.
 - **Competitive mode:** one switch (tray menu or settings) turns off the keyboard hook, the on-screen display, the
