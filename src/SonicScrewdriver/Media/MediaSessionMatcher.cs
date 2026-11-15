@@ -22,5 +22,15 @@ public static class MediaSessionMatcher
         return string.Equals(name, "firefox", StringComparison.OrdinalIgnoreCase) && IsHex16(id);
     }
 
+    /// <summary>
+    /// Among the sessions of one app (a browser and its installed web apps share an exe), the one that is playing,
+    /// else the first.
+    /// </summary>
+    public static T? PreferPlaying<T>(IEnumerable<T> candidates, Func<T, bool> isPlaying) where T : class
+    {
+        var list = candidates.ToList();
+        return list.FirstOrDefault(isPlaying) ?? list.FirstOrDefault();
+    }
+
     private static bool IsHex16(string s) => s.Length == 16 && s.All(Uri.IsHexDigit);
 }

@@ -59,8 +59,12 @@ public sealed class AppVolumeViewModel : ObservableObject
             _volume = v;
             _audio.SetVolume(ExeName, (float)(v / 100), DeviceId);
             Raise();
+            if (_muted && v > 0) Muted = false; // like the shortcuts: changing the level of a muted app unmutes it
         }
     }
+
+    /// <summary>True while the slider thumb is held: refreshes from the service must not move it under the cursor.</summary>
+    public bool Dragging { get; set; }
 
     public bool Muted
     {
@@ -79,7 +83,7 @@ public sealed class AppVolumeViewModel : ObservableObject
     {
         DisplayName = app.DisplayName;
         var v = Math.Round(app.Volume * 100);
-        if (v != _volume) { _volume = v; Raise(nameof(Volume)); }
+        if (v != _volume && !Dragging) { _volume = v; Raise(nameof(Volume)); }
         if (app.Muted != _muted) { _muted = app.Muted; Raise(nameof(Muted)); }
         if (_icon is null && IconCache.Get(ExeName) is { } icon) { _icon = icon; Raise(nameof(Icon)); }
     }
@@ -124,6 +128,9 @@ public sealed class DeviceViewModel : ObservableObject
         }
     }
 
+    /// <summary>True while the slider thumb is held (see <see cref="AppVolumeViewModel.Dragging"/>).</summary>
+    public bool Dragging { get; set; }
+
     public bool Muted
     {
         get => _muted;
@@ -141,7 +148,7 @@ public sealed class DeviceViewModel : ObservableObject
     {
         IsDefault = device.IsDefault;
         var v = Math.Round(device.Volume * 100);
-        if (v != _volume) { _volume = v; Raise(nameof(Volume)); }
+        if (v != _volume && !Dragging) { _volume = v; Raise(nameof(Volume)); }
         if (device.Muted != _muted) { _muted = device.Muted; Raise(nameof(Muted)); }
 
         var live = device.Apps;

@@ -30,7 +30,23 @@ public partial class FlyoutWindow : Window
         IsVisibleChanged += (_, e) => _visible = (bool)e.NewValue;
         Deactivated += (_, _) => HideFlyout();
         SizeChanged += (_, _) => Reposition();
+        AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,
+            new System.Windows.Controls.Primitives.DragStartedEventHandler((_, e) => SetDragging(e.OriginalSource, true)));
+        AddHandler(System.Windows.Controls.Primitives.Thumb.DragCompletedEvent,
+            new System.Windows.Controls.Primitives.DragCompletedEventHandler((_, e) => SetDragging(e.OriginalSource, false)));
         PreviewKeyDown += (_, e) => { if (e.Key == System.Windows.Input.Key.Escape) HideFlyout(); };
+    }
+
+    /// <summary>Tells the row of the slider being dragged to ignore refreshes (coarse hardware steps made it fight the cursor).</summary>
+    private static void SetDragging(object source, bool on)
+    {
+        if (source is not DependencyObject d) return;
+        while (d is not null and not Slider) d = System.Windows.Media.VisualTreeHelper.GetParent(d);
+        switch ((d as Slider)?.DataContext)
+        {
+            case AppVolumeViewModel app: app.Dragging = on; break;
+            case DeviceViewModel dev: dev.Dragging = on; break;
+        }
     }
 
     // Any thread. A hidden flyout does not even wake the UI thread.

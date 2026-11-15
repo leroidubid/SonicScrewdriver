@@ -15,6 +15,13 @@ public sealed class BindingRowViewModel : ObservableObject
     /// <summary>"Claude (claude.exe)" in the target list.</summary>
     public static string Label(string displayName, string exe) => $"{displayName} ({exe})";
 
+    /// <summary>"Claude (claude.exe)" -> claude.exe; any other text is returned as typed.</summary>
+    public static string ExeFromLabel(string text)
+    {
+        var match = ExeInParens.Match(text.Trim());
+        return match.Success ? match.Groups[1].Value : text.Trim();
+    }
+
     private bool _ctrl, _shift, _alt, _win;
     private string _target = ForegroundLabel;
     private int _step = 5;
@@ -56,8 +63,7 @@ public sealed class BindingRowViewModel : ObservableObject
         else if (string.Equals(t, OutputDeviceLabel, StringComparison.OrdinalIgnoreCase)) target = Target.OutputDevice;
         else
         {
-            var match = ExeInParens.Match(t); // "Claude (claude.exe)" -> claude.exe
-            target = Target.Process(match.Success ? match.Groups[1].Value : t);
+            target = Target.Process(ExeFromLabel(t));
         }
         return new KeyBinding(m, target, StepPercent);
     }

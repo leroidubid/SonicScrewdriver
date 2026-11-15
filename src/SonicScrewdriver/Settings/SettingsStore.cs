@@ -42,6 +42,9 @@ public sealed class SettingsStore
             s.Bindings ??= AppSettings.CreateDefault().Bindings;
             s.Bindings = Sanitize(s.Bindings);
             s.CycleDeviceIds ??= new List<string>();
+            s.AutoPrograms = SanitizePrograms(s.AutoPrograms);
+            s.KeyRemaps = SanitizeRemaps(s.KeyRemaps);
+            s.CompetitiveHotkey =Input.Hotkey.TryParse(s.CompetitiveHotkey, out var hotkey) ? hotkey.ToString() : null;
             return s;
         }
         catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException)
@@ -77,6 +80,37 @@ public sealed class SettingsStore
             if (target.Kind == Bindings.TargetKind.Process && string.IsNullOrEmpty(target.ExeName)) continue;
             if (!seen.Add(b.Modifiers)) continue;
             result.Add(b with { Target = target, StepPercent = Math.Clamp(b.StepPercent, 1, 50) });
+        }
+        return result;
+    }
+
+    /// <summary>Keeps valid remaps with canonical key names; the first entry wins for a key and for an action.</summary>
+    internal static List<KeyRemap> SanitizeRemaps(List<KeyRemap>? remaps)
+    {
+        var keys = new HashSet<int>();
+        var actions = new HashSet<Input.MediaKey>();
+        var result = new List<KeyRemap>();
+        foreach (var r in remaps ?? new List<KeyRemap>())
+        {
+            if (r?.Key is null || !Enum.IsDefined(r.Action)) continue;
+            if (!Input.KeyNames.TryGetVirtualKey(r.Key, out var vk) || !Input.KeyNames.IsRemappable(vk)) continue;
+            if (keys.Contains(vk) || actions.Contains(r.Action)) continue;
+            keys.Add(vk);
+            actions.Add(r.Action);
+            result.Add(new KeyRemap(r.Action, Input.KeyNames.NameOf(vk)!));
+        }
+        return result;
+    }
+
+    /// <summary>Normalizes exe names, drops empty entries and keeps the first of duplicates.</summary>
+    internal static List<AutoProgram> SanitizePrograms(List<AutoProgram>? programs)
+    {
+        var seen = new HashSet<string>();
+        var result = new List<AutoProgram>();
+        foreach (var p in programs ?? new List<AutoProgram>())
+        {
+            var exe = Bindings.Target.NormalizeExe(p?.ExeName ?? "");
+            if (exe.Length > 0 && seen.Add(exe)) result.Add(new AutoProgram(exe, p!.Enabled));
         }
         return result;
     }

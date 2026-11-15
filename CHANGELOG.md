@@ -19,22 +19,38 @@ First public release.
   - **The foreground app.**
   - **Output devices:** Vol+ / Vol− cycle the default output through a chosen list of devices
     (all enabled devices by default).
+- **Remap media keys:** choose which physical keys (F1–F24, Pause, Scroll Lock, Insert, Home, End, Page Up/Down,
+  numpad) act as Vol+, Vol−, Mute, Play/Pause, Next and Previous. A remapped key resolves through the same shortcuts
+  as the real key; without a shortcut it is replaced by the real media key (sent with `SendInput`, tagged so the hook
+  ignores it). The tray tooltip and menu list the remaps. Off in competitive mode.
 - **Pass-through:** media keys without a modifier, or with an unbound combination, keep their normal
   Windows behavior.
 - **On-screen display:** shows the app icon, its name and the new level, without stealing focus.
 - **Device control:** set the default output device from the mixer, and route an app to another
   output (right-click it in the mixer).
 - **Mouse wheel:** over the tray icon for the master volume, and over a mixer row for that app.
-- **Tray tooltip and menu:** both show the current output device and the configured shortcuts.
+- **Tray tooltip and menu:** both show the current output device and the configured shortcuts. The right-click menu is
+  a flyout in the same design as the mixer (Settings, Competitive mode, Quit) instead of the native Win32 menu: it opens
+  inside the work area next to the taskbar, closes on Escape or an outside click, and works with the arrow keys.
 - **Settings window:** apps are listed as "Name (exe)", with the output-device cycle list and the
   Start with Windows option. Settings are saved to `%APPDATA%\SonicScrewdriver\settings.json`;
   hand-edited files are sanitized on load and corrupt files are backed up.
+- **Pixel-art tray icon:** the 16, 20, 24 and 32 px frames of the icon (what the notification area uses at 100 to
+  200 % scale) are hand-placed pixel art, so the screwdriver stays readable; larger sizes keep the smooth drawing. The
+  red competitive-mode icon now turns only the green emitter and sound arcs red, keeping the steel and grip neutral.
+- **Settings window:** one card per topic, with modifier chips, switches, styled fields and a dark title bar.
 - **Installer:** per-user Inno Setup installer that needs no admin rights, with a Start menu
   shortcut, an optional start with Windows, a .NET 8 Desktop Runtime check and a clean uninstall.
   A portable single-file exe is also provided.
 - **Competitive mode:** one switch (tray menu or settings) turns off the keyboard hook, the on-screen display, the
   mouse wheel on the tray icon and the lookups of other programs, so nothing can be mistaken for cheating software
   by an anti-cheat. The options it turns off are greyed out in the settings window.
+- **Competitive mode shortcut:** an optional key combination (settings window) that switches competitive mode on and
+  off, with a short notification. It uses `RegisterHotKey` instead of the keyboard hook, so it keeps working while the
+  hook is uninstalled and no other key is ever seen.
+- **Automatic competitive mode:** off by default. A list of programs (exe names, each with its own on/off tick) in the
+  settings window turns competitive mode on while one of them runs and off when it exits, unless you switched it by
+  hand. Detection reads the process list every 5 seconds without opening any process, and only while a program is ticked.
 
 ### Reliability
 
@@ -47,6 +63,8 @@ First public release.
 - **Startup:** a startup failure is reported instead of leaving an invisible process; a locked
   settings file falls back to defaults; save errors are reported.
 - **Footprint:** about 20 MB of RAM and no CPU use at idle.
+- **Mixer:** changing the slider of a muted app unmutes it, a slider being dragged is no longer moved by refreshes, plugging a device only touches that device, microphones are ignored, and an app session is never listed twice.
+- **Play/Pause/Next:** when an app has several media sessions (a browser and its installed web apps), the one that is playing is used.
 - **Minimal process access:** the app no longer opens other programs with the right to read their memory (which
   anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
   from the file on disk.

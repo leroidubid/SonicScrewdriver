@@ -20,6 +20,11 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   - **a specific app** (`spotify.exe`, `discord.exe`, …): volume, mute and media control for that app only;
   - **the foreground app**: whatever window has focus;
   - **output devices**: Vol+ / Vol− cycle the default output through the devices you choose.
+- **Remap the media keys.** No media keys on your keyboard (compact keyboards, laptops where they sit behind `Fn`)?
+  In the settings, choose which key acts as Vol+, Vol−, Mute, Play/Pause, Next and Previous (for example F10, F11,
+  F12). A remapped key works exactly like the real one: `Shift + F11` turns down the app bound to Shift, a bare
+  `F11` lowers the master volume. A remapped key loses its usual job while the app runs, and the remaps are off in
+  competitive mode (they need the keyboard hook).
 - **Media keys stay normal.** A media key without a modifier, or with an unbound combination, keeps
   its usual Windows behavior.
 - **On-screen display.** A small, non-intrusive overlay shows the app icon, its name and the new level.
@@ -27,10 +32,31 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   another output.
 - **Mouse wheel.** Scroll over the tray icon to change the master volume, or over a mixer row to
   change that app.
-- **At a glance.** The tray tooltip and menu show the current output device and your shortcuts.
+- **At a glance.** The tray tooltip and the right-click menu show the current output device and your shortcuts. The
+  menu is drawn like the mixer (same theme, above the taskbar, closes on Escape or a click elsewhere, usable with the
+  arrow keys) and holds Settings, the Competitive mode switch and Quit.
 - **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
-  lookups) for online games. See [Games and anti-cheat](#games-and-anti-cheat).
-- **Light.** Around 20 MB of RAM and no CPU at idle; no polling, everything is event driven.
+  lookups) for online games, with an optional shortcut to flip it. See [Games and anti-cheat](#games-and-anti-cheat).
+- **Light.** Around 20 MB of RAM and no CPU at idle; everything is event driven (the only timer is the optional
+  automatic competitive mode, a process-name check every 5 seconds, and only if you list a program).
+
+## Settings
+
+Right-click the tray icon, then **Settings**. The window has one card per topic:
+
+- **Shortcuts**: each row is a modifier combination, the app it controls (a specific app, the foreground app or
+  the output devices) and the volume step.
+- **Output devices in the cycle**, and **Media keys** to choose which physical keys act as Vol+, Vol-, Mute, Play,
+  Next and Previous.
+- **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
+  automatically. While it is on, the shortcut options are greyed out.
+- **General**: Start with Windows.
+
+<p align="center">
+  <img src="docs/settings.png" alt="Settings: shortcuts, output devices and media keys" width="290">&nbsp;
+  <img src="docs/settings-mode.png" alt="Settings: competitive mode, its shortcut and the automatic list" width="290">&nbsp;
+  <img src="docs/settings-competitive.png" alt="Settings with Competitive mode on: the shortcut options are greyed out" width="290">
+</p>
 
 ## Why
 
@@ -47,7 +73,7 @@ the media keys and act on the app you choose.
    - `SonicScrewdriver-Setup-x.y.z.exe`: per-user install, no admin rights, Start menu shortcut,
      optional start with Windows, clean uninstall;
    - or `SonicScrewdriver.exe`: portable, just run it.
-3. Right-click the tray icon, choose **Shortcut settings**, and add your shortcuts.
+3. Right-click the tray icon, choose **Settings**, and add your shortcuts.
 
 Windows SmartScreen may warn on first run because the files are not code-signed:
 click **More info**, then **Run anyway**.
@@ -73,17 +99,32 @@ memory. Even so, anti-cheat systems are opaque, and a global keyboard hook can l
 compatibility cannot be guaranteed.
 
 For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlEye), turn on **Competitive mode**
-(tray menu, or Shortcut settings) or quit the app first. In that mode:
+(tray menu, or Settings) or quit the app first. In that mode:
 
 | Switched off | What you lose |
 |---|---|
-| The keyboard hook | All modifier + media key shortcuts, and output device cycling |
+| The keyboard hook | All modifier + media key shortcuts, remapped media keys, and output device cycling |
 | The on-screen display | The overlay shown after a shortcut |
 | Mouse wheel on the tray icon | Master volume with the wheel |
 | Lookups of other programs | App icons and friendly names (the exe name and a generic icon are shown instead) |
 
 The mixer, the sliders, switching the default output and the physical media keys keep working. Competitive mode
 lowers the risk but does not remove it: quitting the app is the safest choice.
+
+**Automatic mode (off by default).** In the settings you can list the games to protect: while a ticked program runs,
+competitive mode turns on by itself, and it turns off again when the program exits. A program is spotted by its exe
+name in the Windows process list, read from one snapshot every 5 seconds: the process is never opened, so no handle
+or access right touches the game. Nothing runs while the list has no ticked program. If you switch the mode yourself,
+the automation steps aside: a mode you turned on stays on, and one you turned off stays off until the program has
+exited. An automatic "on" is not saved as your preference.
+
+**Toggle shortcut.** In the settings you can assign a key combination (for example `Ctrl+Alt+F9`) that switches
+competitive mode on and off, with a short notification each time. It has to work while the keyboard hook is
+uninstalled, so it does not use a hook: it is registered with the Windows `RegisterHotKey` function, where Windows
+itself matches the combination and tells the app. The app never sees any other key. The trade-off: this is a
+documented, ordinary API that many programs use and is much less intrusive than a hook, but it is still one
+registration that stays active in competitive mode. If you want nothing at all, leave the shortcut empty (the default)
+and use the tray menu, or quit the app.
 
 ## Security
 
@@ -97,6 +138,12 @@ lowers the risk but does not remove it: quitting the app is the safest choice.
   ```bash
   gh attestation verify SonicScrewdriver-Setup-x.y.z.exe --repo leroidubid/SonicScrewdriver
   ```
+
+- **Antivirus false positives.** The files are not code-signed, and a few machine-learning engines on VirusTotal
+  (for example SecureAge and Acronis) flagged an early build as suspicious, while Microsoft Defender and the
+  other engines found nothing. These engines react to the API calls any keyboard-shortcut tool needs (a keyboard
+  hook, key injection, start with Windows), not to anything harmful. To check a download yourself, compare its
+  hash with `SHA256SUMS.txt`, verify the attestation above, or read and build the source.
 
 ## Build
 
