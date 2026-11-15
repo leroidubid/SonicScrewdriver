@@ -94,3 +94,27 @@ jobs:
     with:
       tag: ${{ github.ref_name }}
     secrets: inherit
+
+  # Opens a pull request on microsoft/winget-pkgs for the new version (official wingetcreate tool).
+  # Needs the secret WINGET_TOKEN (classic token, public_repo scope) and a fork of winget-pkgs; skipped
+  # without the secret and for pre-release tags (v1.2.0-rc1). The package must already exist in
+  # winget-pkgs: the very first version is submitted by hand.
+  # Put the secret in the "winget" environment and add yourself as required reviewer there to approve
+  # each submission.
+  winget:
+    needs: [release, scan]
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: windows-latest
+    environment: winget
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Submit to winget-pkgs
+        if: ${{ env.WINGET_TOKEN != '' }}
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          $url = "https://github.com/${{ github.repository }}/releases/download/v$v/SonicScrewdriver-Setup-$v.exe"
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          ./wingetcreate.exe update Leroidubid.SonicScrewdriver --version $v --urls $url --submit --token $env:WINGET_TOKEN
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
