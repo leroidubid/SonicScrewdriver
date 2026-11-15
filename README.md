@@ -92,7 +92,15 @@ iscc installer/SonicScrewdriver.iss /DAppVersion=1.0.0
 
 ## License
 
-Free to use, modify and share, **not to sell**: [MIT + Commons Clause](LICENSE).
+[MIT + Commons Clause](LICENSE): free to use, modify and share, but **not to sell**.
+
+- You can use it, at home or at work, modify it, fork it, and share it for free.
+- You cannot sell it, sell a modified version, or sell a service whose value comes mainly from it
+  (paid hosting, paid support, a paid product built around it) without my written permission.
+- Want to use it commercially? Contact me through my [GitHub profile](https://github.com/leroidubid).
+- This is a source-available license, not an OSI-approved open-source one.
+
+Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The name nods to a certain time traveller's favourite tool. This project is not affiliated with or
 endorsed by the BBC.
