@@ -9,6 +9,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write      # build provenance attestation
+  attestations: write
 
 jobs:
   release:
@@ -61,6 +63,15 @@ jobs:
           name: winget-manifest-${{ steps.v.outputs.version }}
           path: publish/winget-${{ steps.v.outputs.version }}
 
+      # Signed proof that these files were built by this workflow from this commit.
+      # Verify with: gh attestation verify <file> --repo <owner>/<repo>
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            publish/SonicScrewdriver.exe
+            publish/SonicScrewdriver-Setup-${{ steps.v.outputs.version }}.exe
+
       - name: Release
         shell: bash
         env:
@@ -75,3 +86,11 @@ jobs:
             [ -s notes.md ] || echo "See CHANGELOG.md" > notes.md
             gh release create "$GITHUB_REF_NAME" "${FILES[@]}" --title "Sonic Screwdriver ${VERSION}" --notes-file notes.md
           fi
+
+  # Defender + VirusTotal on the published files; adds the VirusTotal links to the release notes.
+  scan:
+    needs: release
+    uses: ./.github/workflows/scan.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

@@ -1,0 +1,67 @@
+name: Security scan
+
+# Scans the published release files with Microsoft Defender and VirusTotal.
+# Runs after every release, and can be started by hand: Actions > Security scan > Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to scan (for example v1.0.0)
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      VT_API_KEY:
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
+    steps:
+      - name: Download release files
+        shell: bash
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.exe" --dir scan
+
+      - name: Microsoft Defender
+        shell: pwsh
+        run: |
+          try { Update-MpSignature -ErrorAction Stop } catch { Write-Warning "Signature update failed: $_" }
+          $path = (Resolve-Path scan).Path
+          & "$env:ProgramFiles\Windows Defender\MpCmdRun.exe" -Scan -ScanType 3 -File $path -DisableRemediation
+          $code = $LASTEXITCODE
+          $sig = try { (Get-MpComputerStatus).AntivirusSignatureVersion } catch { 'unknown' }
+          $result = if ($code -eq 0) { 'no threats found' } else { "THREAT OR ERROR (exit code $code)" }
+          "### Microsoft Defender`n$result (signatures $sig)`n" | Out-File $env:GITHUB_STEP_SUMMARY -Append
+          if ($code -ne 0) { throw "Defender scan failed with exit code $code" }
+
+      # Adds the report links to the release notes when run from a tag.
+      - name: VirusTotal
+        id: vt
+        if: ${{ env.VT_API_KEY != '' }}
+        uses: crazy-max/ghaction-virustotal@v4
+        with:
+          vt_api_key: ${{ env.VT_API_KEY }}
+          github_token: ${{ github.token }}
+          update_release: ${{ github.ref_type == 'tag' }}
+          files: scan/*.exe
+
+      - name: VirusTotal summary
+        if: ${{ env.VT_API_KEY != '' && always() }}
+        shell: bash
+        env:
+          ANALYSIS: ${{ steps.vt.outputs.analysis }}
+        run: |
+          {
+            echo "### VirusTotal"
+            echo "$ANALYSIS" | tr ',' '\n' | sed 's/^\(.*\)=\(.*\)$/- \1: \2/'
+          } >> "$GITHUB_STEP_SUMMARY"

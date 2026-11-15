@@ -59,6 +59,19 @@ The default shortcut is `Ctrl + media keys` on the foreground app. Settings are 
 - **Undocumented APIs:** changing the default device and routing an app to an output use undocumented
   Windows interfaces, the same ones EarTrumpet uses.
 
+## Security
+
+- The keyboard hook only looks at the six media keys; no other key is read or stored. The app does not
+  use the network and collects nothing.
+- Releases are built by GitHub Actions from the tagged commit, scanned with Microsoft Defender and
+  [VirusTotal](https://www.virustotal.com) (the report links are added to the release notes), and come
+  with `SHA256SUMS.txt`.
+- You can check that a download was built from this repository (needs the [GitHub CLI](https://cli.github.com)):
+
+  ```bash
+  gh attestation verify SonicScrewdriver-Setup-x.y.z.exe --repo leroidubid/SonicScrewdriver
+  ```
+
 ## Build
 
 Requires the .NET 8 SDK.
