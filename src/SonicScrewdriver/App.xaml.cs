@@ -223,6 +223,7 @@ public partial class App : Application
         ApplyMicrophone();
         ApplyDucking();
         ApplyStreamer();
+        _settingsWindow?.FollowLiveMode(on); // the settings box follows a toggle made while the window is open
     }
 
     /// <summary>
