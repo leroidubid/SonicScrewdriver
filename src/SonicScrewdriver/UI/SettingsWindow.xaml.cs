@@ -15,7 +15,7 @@ public partial class SettingsWindow : Window
     private readonly ObservableCollection<BindingRowViewModel> _rows;
     private readonly ObservableCollection<AutoProgramRowViewModel> _autoRows;
     private readonly List<(MediaKey Action, KeyCaptureBox Box)> _remapBoxes = new();
-    private bool _initialCompetitive; // the checkbox state at the last save (or at opening): "edited" is measured against it
+    private readonly CompetitiveEditState _competitive = new(false); // the checkbox against the live mode: "edited" is measured against its baseline
     private readonly Func<Hotkey, bool>? _hotkeyAvailable;
     private readonly List<FreeRow> _freeRows = new();
     private readonly ObservableCollection<string> _hidden;
@@ -26,7 +26,14 @@ public partial class SettingsWindow : Window
     public event Action<AppSettings>? Saved;
 
     /// <summary>True when the user changed the checkbox: otherwise the live state (a shortcut may have toggled it) wins.</summary>
-    public bool CompetitiveModeEdited => (CompetitiveBox.IsChecked == true) != _initialCompetitive;
+    public bool CompetitiveModeEdited => _competitive.Edited;
+
+    /// <summary>The live mode was toggled elsewhere (shortcut, tray, program): an untouched box follows it.</summary>
+    public void FollowLiveMode(bool live)
+    {
+        _competitive.LiveChanged(live);
+        if (CompetitiveBox.IsChecked != _competitive.Box) CompetitiveBox.IsChecked = _competitive.Box;
+    }
 
     public List<string> TargetChoices { get; }
 
@@ -80,7 +87,8 @@ public partial class SettingsWindow : Window
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
-        CompetitiveBox.IsChecked = _initialCompetitive = current.CompetitiveMode;
+        CompetitiveBox.IsChecked = current.CompetitiveMode;
+        _competitive.Saved(current.CompetitiveMode);
         ModeHotkeyBox.Value = current.CompetitiveHotkey;
         ModeHotkeyBox.Rejected += message => HotkeyError.Text = message;
         ApplyCompetitiveState();
@@ -130,7 +138,11 @@ public partial class SettingsWindow : Window
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
-    private void Competitive_Changed(object sender, RoutedEventArgs e) => ApplyCompetitiveState();
+    private void Competitive_Changed(object sender, RoutedEventArgs e)
+    {
+        _competitive.Box = CompetitiveBox.IsChecked == true;
+        ApplyCompetitiveState();
+    }
 
     /// <summary>Everything that depends on the keyboard hook is greyed out and disabled in competitive mode.</summary>
     private void ApplyCompetitiveState()
@@ -374,9 +386,11 @@ public partial class SettingsWindow : Window
         ErrorList.ItemsSource = errors;
         if (errors.Count > 0) return false;
         Saved?.Invoke(settings);
-        // Later saves compare with this state: the live competitive mode wins again unless the box is changed once more,
-        // and an app shown again is not shown again (nor re-shown after being hidden anew from the mixer) by the next save.
-        _initialCompetitive = settings.CompetitiveMode;
+        // Later saves compare with this state: the live competitive mode wins again unless the box is changed once more
+        // (the box shows what was applied), and an app shown again is not shown again (nor re-shown after being hidden
+        // anew from the mixer) by the next save.
+        _competitive.Saved(settings.CompetitiveMode);
+        if (CompetitiveBox.IsChecked != settings.CompetitiveMode) CompetitiveBox.IsChecked = settings.CompetitiveMode;
         ShownAgain.Clear();
         return true;
     }

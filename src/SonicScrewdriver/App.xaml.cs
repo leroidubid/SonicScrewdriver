@@ -37,10 +37,12 @@ public partial class App : Application
     private LimitEnforcer _enforcer = null!;
     private DuckingEngine _ducking = null!;
     private DuckingEngine _streamer = null!;
+    private DuckLedger _ledger = null!;
     private MicrophoneMeter? _micMeter;
     private readonly System.Windows.Threading.DispatcherTimer _streamTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly System.Windows.Threading.DispatcherTimer _duckTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private MicrophoneService? _mic;
+    private readonly MicMuteGuard _micGuard = new();
     private readonly DevicePriorityPolicy _devicePriority = new();
     private readonly System.Windows.Threading.DispatcherTimer _priorityTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private RoutingApplier _routing = null!;
@@ -169,10 +171,11 @@ public partial class App : Application
             _priorityTimer.Stop();
             ApplyDevicePriorityNow();
         };
-        var ledger = new DuckLedger(_audio); // shared: levels always come back to what the user had
-        _ducking = new DuckingEngine(_audio, () => _settings.Ducking, ledger, blocked: () => _settings.CompetitiveMode);
+        _ledger = new DuckLedger(_audio); // shared: levels always come back to what the user had
+        _ledger.WaitingChanged += UpdateLedgerWatch;
+        _ducking = new DuckingEngine(_audio, () => _settings.Ducking, _ledger, blocked: () => _settings.CompetitiveMode);
         _duckTimer.Tick += (_, _) => _ducking.Tick(Environment.TickCount64);
-        _streamer = new DuckingEngine(_audio, () => _settings.Streamer.ToDucking(), ledger, () => _micMeter?.Peak(), () => _settings.CompetitiveMode);
+        _streamer = new DuckingEngine(_audio, () => _settings.Streamer.ToDucking(), _ledger, () => _micMeter?.Peak(), () => _settings.CompetitiveMode);
         _streamTimer.Tick += (_, _) => _streamer.Tick(Environment.TickCount64);
         _limitTimer.Tick += (_, _) => { _limitTimer.Stop(); _enforcer.Enforce(); };
         _runner = new CommandRunner(_audio, () => _settings.CompetitiveMode, on => SetCompetitive(on, notify: true))
@@ -223,6 +226,8 @@ public partial class App : Application
         ApplyMicrophone();
         ApplyDucking();
         ApplyStreamer();
+        UpdateLedgerWatch();
+        _settingsWindow?.FollowLiveMode(on); // the settings box follows a toggle made while the window is open
     }
 
     /// <summary>
@@ -260,6 +265,19 @@ public partial class App : Application
         UpdateDuckTimer();
     }
 
+    /// <summary>
+    /// An app that had no session when its level was given back is waited for (a few minutes): session changes are
+    /// observed only while one is waiting and competitive mode is off, and bring its level back when it returns.
+    /// </summary>
+    private void UpdateLedgerWatch()
+    {
+        _audio.SessionsChanged -= OnLedgerEvent;
+        if (_ledger.HasWaiting && !_settings.CompetitiveMode) _audio.SessionsChanged += OnLedgerEvent;
+    }
+
+    // Any thread: the retry itself runs on the UI thread.
+    private void OnLedgerEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_settings.CompetitiveMode) _ledger.RetryPending(); });
+
     private void StopDucking()
     {
         _duckTimer.Stop();
@@ -286,6 +304,13 @@ public partial class App : Application
         var wanted = !_settings.CompetitiveMode && (!string.IsNullOrWhiteSpace(_settings.MicMuteHotkey) || _settings.MicrophoneInMixer);
         if (!wanted)
         {
+            // Entering competitive mode: a microphone muted by the shortcut would stay muted with no icon and no shortcut.
+            if (_settings.CompetitiveMode && _micGuard.MutedByApp)
+            {
+                var temporary = _mic is null ? new MicrophoneService() : null;
+                try { _micGuard.ReleaseIfMutedByApp((IMicrophone?)_mic ?? temporary!); }
+                finally { temporary?.Dispose(); }
+            }
             if (_mic is not null) { _mic.Changed -= OnMicChanged; _mic.Dispose(); _mic = null; }
             _tray?.SetMicMuted(false);
             return;
@@ -312,7 +337,7 @@ public partial class App : Application
         var temporary = _mic is null ? new MicrophoneService() : null;
         try
         {
-            var muted = MicrophoneToggle.Toggle((IMicrophone?)_mic ?? temporary!);
+            var muted = MicrophoneToggle.Toggle(_micGuard.Wrap((IMicrophone?)_mic ?? temporary!));
             if (muted is null) return false;
             _osd.Show(null, (_mic ?? temporary)!.Name, muted.Value ? "Microphone muted" : "Microphone unmuted");
             _tray?.SetMicMuted(_mic is not null && muted.Value);
@@ -455,6 +480,7 @@ public partial class App : Application
         if (on == _settings.CompetitiveMode) return;
         _settings.CompetitiveMode = on;
         ApplyMode();
+        PollAutoPrograms(); // the program-start profiles are watched again after leaving the mode (and the timer follows)
         TrySave();
         if (notify)
             _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
@@ -469,7 +495,7 @@ public partial class App : Application
     {
         var autoAny = _settings.AutoPrograms.Any(p => p.Enabled);
         // Profiles that start with a program use the same snapshot; never while competitive mode is on (no lookups).
-        var any = autoAny || (!_settings.CompetitiveMode && ProfileTriggers.Any(_settings.Profiles));
+        var any = AutoPollPolicy.Wanted(_settings);
         var running = any ? ProcessNames.Running() : new HashSet<string>();
         var program = AutoCompetitive.FirstRunning(_settings.AutoPrograms, running);
         if (_autoMode.Evaluate(program is not null, _settings.CompetitiveMode) is { } on)
@@ -486,7 +512,7 @@ public partial class App : Application
                 // An app often opens its audio session a few seconds after it starts: apply again 10 s later.
                 if (ApplyProfile(profile.Name)) { _retry.Add(profile); _profileRetry.Stop(); _profileRetry.Start(); }
             }
-        _autoTimer.IsEnabled = autoAny || (!_settings.CompetitiveMode && ProfileTriggers.Any(_settings.Profiles));
+        _autoTimer.IsEnabled = AutoPollPolicy.Wanted(_settings);
     }
 
     private void RegisterModeHotkey()
@@ -513,19 +539,15 @@ public partial class App : Application
     /// <summary>Persists settings (plus an optional registry change); reports failures instead of hiding them.</summary>
     private void TrySave(Action? alsoDo = null)
     {
-        try
+        foreach (var problem in SaveSteps.Run(() =>
         {
-            alsoDo?.Invoke();
             // An automatic "on" follows a running program: it is never saved as the user's preference.
             var saved = _settings.CompetitiveMode;
             if (_autoMode.IsAutomatic) _settings.CompetitiveMode = false;
             try { _store.Save(_settings); }
             finally { _settings.CompetitiveMode = saved; }
-        }
-        catch (Exception ex)
-        {
-            _tray?.Notify("Sonic Screwdriver", $"Could not save settings: {ex.Message}. Changes apply until Sonic Screwdriver restarts.");
-        }
+        }, alsoDo))
+            _tray?.Notify("Sonic Screwdriver", problem);
     }
 
     /// <summary>The flyout is created on first use and trims memory when hidden.</summary>
@@ -534,7 +556,7 @@ public partial class App : Application
         if (_flyout is null)
         {
             _flyout = new FlyoutWindow(_audio, () => _settings, () => { TrySave(); }, _media,
-                () => _settings.MicrophoneInMixer && !_settings.CompetitiveMode ? _mic : null);
+                () => _settings.MicrophoneInMixer && !_settings.CompetitiveMode && _mic is not null ? _micGuard.Wrap(_mic) : null);
             _flyout.IsVisibleChanged += (_, e) =>
             {
                 if (e.NewValue is false)

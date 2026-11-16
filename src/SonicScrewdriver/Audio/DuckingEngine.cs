@@ -12,17 +12,41 @@ public sealed class DuckLedger
 {
     private const float Tolerance = 0.012f;
 
+    /// <summary>How long a restore waits for an app that has no session at the moment of the release (ms).</summary>
+    public const long WaitMs = 5 * 60 * 1000;
+
     private sealed class Entry
     {
         public float Original, Applied;
         public bool Pending; // lowered level still there, the restore failed while the app was running
+        public long? WaitUntil; // the app had no session at the release: restored when it comes back, until this time (ms)
         public readonly Dictionary<object, float> Factors = new();
     }
 
     private readonly IAudioSessionService _audio;
     private readonly Dictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Func<long> _clock;
+    private bool _hadWaiting;
 
-    public DuckLedger(IAudioSessionService audio) => _audio = audio;
+    public DuckLedger(IAudioSessionService audio, Func<long>? clock = null)
+    {
+        _audio = audio;
+        _clock = clock ?? (() => Environment.TickCount64);
+    }
+
+    /// <summary>True while some app is waited for (no session at the release): the app should then watch session changes and call <see cref="RetryPending"/>.</summary>
+    public bool HasWaiting => _entries.Values.Any(e => e.WaitUntil is not null);
+
+    /// <summary>Raised (UI thread) when <see cref="HasWaiting"/> changes.</summary>
+    public event Action? WaitingChanged;
+
+    private void CheckWaiting()
+    {
+        var now = HasWaiting;
+        if (now == _hadWaiting) return;
+        _hadWaiting = now;
+        WaitingChanged?.Invoke();
+    }
 
     public bool Holds(object owner, string exe) => _entries.TryGetValue(exe, out var e) && e.Factors.ContainsKey(owner);
 
@@ -46,7 +70,9 @@ public sealed class DuckLedger
         {
             entry.Factors[owner] = factor;
             entry.Pending = false;
+            entry.WaitUntil = null;
             Apply(exe, entry);
+            CheckWaiting();
             return true;
         }
         if (_audio.GetVolume(exe) is not { } current) return false;
@@ -64,18 +90,27 @@ public sealed class DuckLedger
         if (!_entries.TryGetValue(exe, out var entry) || !entry.Factors.Remove(owner)) return;
         if (entry.Factors.Count == 0) Finish(exe, entry);
         else Apply(exe, entry);
+        CheckWaiting();
     }
 
     /// <summary>Tries again the restores that failed while their app was still running (a no-op when there are none).</summary>
     public void RetryPending()
     {
-        foreach (var (exe, entry) in _entries.Where(kv => kv.Value.Pending && kv.Value.Factors.Count == 0).ToList()) Finish(exe, entry);
+        foreach (var (exe, entry) in _entries.Where(kv => (kv.Value.Pending || kv.Value.WaitUntil is not null) && kv.Value.Factors.Count == 0).ToList()) Finish(exe, entry);
+        CheckWaiting();
     }
 
     /// <summary>The last owner is gone: back to the original, unless the user moved the slider or the app is gone.</summary>
     private void Finish(string exe, Entry entry)
     {
-        if (_audio.GetVolume(exe) is not { } current) { _entries.Remove(exe); return; } // the app has no session any more: nothing to restore
+        if (_audio.GetVolume(exe) is not { } current)
+        {
+            // No session now: Windows remembers the lowered level for the app, so wait (bounded) for it to come back.
+            var now = _clock();
+            if (entry.WaitUntil is not { } until) entry.WaitUntil = now + WaitMs;
+            else if (now > until) _entries.Remove(exe);
+            return;
+        }
         if (Math.Abs(current - entry.Applied) > Tolerance) { _entries.Remove(exe); return; } // the user moved it: their level stays
         if (_audio.SetVolume(exe, entry.Original) || _audio.SetVolume(exe, entry.Original)) _entries.Remove(exe);
         else entry.Pending = true; // the app is still there and the write failed twice: keep the entry for a later retry

@@ -15,10 +15,9 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     private readonly DeviceNotifications _notifications;
     private List<DeviceTracker> _devices = new();
     private string? _defaultId;
-    private volatile bool _dirty = true;
-    // Devices whose state changed since the last rebuild: a tracker is never reused for them (an unplug and replug of
-    // the same device between two rebuilds gives the same id but new COM objects, the old ones are stale).
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _stale = new();
+    // What the notifications reported since the last rebuild; a tracker is never reused for a device whose state changed
+    // (an unplug and replug of the same device between two rebuilds gives the same id but new COM objects).
+    private readonly DeviceChangeLog _changes = new();
     private volatile bool _full;   // true: drop every tracker; false: keep the ones whose device is still there
 
     public event EventHandler? SessionsChanged;
@@ -28,8 +27,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     {
         _notifications = new DeviceNotifications(id =>
         {
-            if (id is not null) _stale[id] = 0;
-            _dirty = true;
+            _changes.Mark(id);
             RaiseSessionsChanged();
         });
         _enumerator.RegisterEndpointNotificationCallback(_notifications);
@@ -42,7 +40,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     {
         get
         {
-            if (_dirty) Rebuild();
+            if (_changes.Dirty) Rebuild();
             return _devices;
         }
     }
@@ -56,11 +54,9 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         var old = _full ? new List<DeviceTracker>() : _devices;
         if (_full) foreach (var d in _devices) d.Dispose();
         _full = false;
-        var staleIds = _stale.Keys.ToList();
-        foreach (var id in staleIds) _stale.TryRemove(id, out _);
+        var staleIds = _changes.Begin(); // clears the flag first: a device event arriving during the rebuild sets it again
         var kept = new List<DeviceTracker>();
         _defaultId = null;
-        _dirty = false; // cleared first: a device event arriving during the rebuild sets it again
         try
         {
             try
@@ -81,7 +77,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
                 catch (Exception) { try { device.Dispose(); } catch (Exception) { } }
             }
         }
-        catch (Exception) { _dirty = true; }
+        catch (Exception) { _changes.MarkDirty(); }
         foreach (var d in old) if (!kept.Contains(d)) d.Dispose(); // unplugged devices
         _devices = kept;
     }
@@ -120,7 +116,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
                 var ep = d.Device.AudioEndpointVolume;
                 list.Add(new AudioDevice(d.Id, d.Name, d.Id == _defaultId, ep.MasterVolumeLevelScalar, ep.Mute, GroupApps(d.Snapshot())));
             }
-            catch (Exception) { _dirty = true; _full = true; } // a broken tracker is rebuilt, not kept
+            catch (Exception) { _changes.MarkDirty(); _full = true; } // a broken tracker is rebuilt, not kept
         }
         return list.OrderByDescending(d => d.IsDefault).ThenBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
@@ -214,7 +210,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     public bool SetDefaultDevice(string deviceId)
     {
         var ok = AudioPolicy.SetDefaultDevice(deviceId);
-        if (ok) _dirty = true; // read the new default now, without waiting for the notification
+        if (ok) _changes.MarkDirty(); // read the new default now, without waiting for the notification
         return ok;
     }
 
@@ -225,7 +221,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
     public void Reset()
     {
         _full = true;
-        _dirty = true;
+        _changes.MarkDirty();
         _ = Devices;
         RaiseSessionsChanged();
     }

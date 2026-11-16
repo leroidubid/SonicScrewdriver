@@ -4,7 +4,14 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-17
+
+### Added
+
+- **Website:** https://leroidubid.github.io/SonicScrewdriver/ presents the features, the download (latest release), the
+  command line, competitive mode and the tested games and systems, the security notes, the changelog and an FAQ. Plain
+  HTML and CSS, no tracker and no third-party request. The README gains the tables of tested games (with whether a game
+  needs competitive mode) and of tested Windows versions.
 
 ### Fixed
 
@@ -19,6 +26,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Audio devices:** no COM leak when a device tracker fails to build, and a tracker is rebuilt after a quick unplug and
   replug. The tray no longer reads the devices on every mouse move in competitive mode. A late old keyboard-hook thread
   can no longer unhook a newer one.
+- **Settings window:** a second Save no longer turns competitive mode off (or on) by itself after a shortcut toggled it: the
+  box follows the live mode and only your own change of the box counts.
+- **Competitive mode:** after switching it off by hand, the profiles that start with a program are watched again. A
+  microphone muted by the shortcut, the command line or the mixer is unmuted when the mode starts (it is not muted again
+  afterwards), instead of staying muted with no icon and no shortcut.
+- **Settings:** a failing "Start with Windows" registry write no longer prevents `settings.json` from being saved; both
+  failures are reported separately.
+- **Ducking and streamer mode:** an app that has no audio session at the moment its level is given back is restored when it
+  comes back (for up to 5 minutes) instead of keeping the lowered level for good.
+- **Command line:** a command that reached a busy instance after the 5 s timeout is no longer run later, so the "no answer"
+  (exit code 5) is truthful and a retry cannot toggle twice.
+- **Mixer:** opens on the monitor of the tray icon, inside its work area and at its scaling, not always at the bottom right of
+  the primary screen.
+- **Audio devices:** a device notification arriving during a rebuild of the trackers can no longer be lost.
+- **Installer:** finds the .NET 8 Desktop Runtime through the registry and in the per-user, Windows on Arm and `DOTNET_ROOT`
+  locations too.
+- **Release workflow:** `wingetcreate` is downloaded from a pinned release and checked against its SHA256, Inno Setup is
+  installed at a pinned version, and the winget job has no workflow token permissions.
 
 ## [1.1.0] - 2026-11-16
 
@@ -142,5 +167,6 @@ First public release.
   anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
   from the file on disk.
 
+[1.2.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.2.0
 [1.1.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.1.0
 [1.0.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.0.0

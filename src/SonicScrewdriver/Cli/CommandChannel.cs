@@ -15,6 +15,9 @@ public static class CommandChannel
     private const uint SMTO_ABORTIFHUNG = 2;
     private static readonly IntPtr HwndMessage = new(-3);
     private static readonly IntPtr Magic = new(0x53534344); // "SSCD"
+    private const int TimeoutMs = 5000;
+    private const int DeadlineMarginMs = 500; // the server gives up a little before the client does
+    private const string DeadlinePrefix = "deadline=";
 
     /// <summary>The window of the running instance; dispose it on exit. <paramref name="handler"/> runs on the UI thread.</summary>
     public static HwndSource CreateServer(Func<string[], ExitCode> handler)
@@ -27,10 +30,26 @@ public static class CommandChannel
             var data = Marshal.PtrToStructure<CopyData>(lParam);
             if (data.dwData != Magic || data.cbData <= 0 || data.cbData > 4096 || data.lpData == IntPtr.Zero) return new IntPtr((int)ExitCode.Usage);
             var text = Marshal.PtrToStringUni(data.lpData, data.cbData / 2);
-            try { return new IntPtr((int)handler(text.Split('\0'))); }
+            try { return new IntPtr((int)Dispatch(text, Environment.TickCount64, handler)); }
             catch (Exception) { return new IntPtr((int)ExitCode.NoAnswer); }
         });
         return window;
+    }
+
+    /// <summary>
+    /// Decides once: a message whose client has already given up (its deadline has passed: the UI thread was busy) is not run,
+    /// so the client's "no answer" is truthful and a retry cannot run the command twice. Otherwise it runs and reports.
+    /// </summary>
+    public static ExitCode Dispatch(string text, long nowMs, Func<string[], ExitCode> handler)
+    {
+        var parts = text.Split('\0');
+        if (parts.Length > 0 && parts[0].StartsWith(DeadlinePrefix, StringComparison.Ordinal))
+        {
+            if (!long.TryParse(parts[0].AsSpan(DeadlinePrefix.Length), out var deadline)) return ExitCode.Usage;
+            if (nowMs > deadline) return ExitCode.NoAnswer;
+            parts = parts[1..];
+        }
+        return handler(parts);
     }
 
     /// <summary>Sends the arguments to the running instance and returns its answer; NotRunning when there is none.</summary>
@@ -38,12 +57,12 @@ public static class CommandChannel
     {
         var target = FindWindowEx(HwndMessage, IntPtr.Zero, null, WindowName);
         if (target == IntPtr.Zero) return ExitCode.NotRunning;
-        var text = string.Join("\0", args);
+        var text = string.Join("\0", new[] { DeadlinePrefix + (Environment.TickCount64 + TimeoutMs - DeadlineMarginMs) }.Concat(args));
         var buffer = Marshal.StringToHGlobalUni(text);
         try
         {
             var data = new CopyData { dwData = Magic, cbData = text.Length * 2, lpData = buffer };
-            var ok = SendMessageTimeout(target, WM_COPYDATA, IntPtr.Zero, ref data, SMTO_ABORTIFHUNG, 5000, out var result);
+            var ok = SendMessageTimeout(target, WM_COPYDATA, IntPtr.Zero, ref data, SMTO_ABORTIFHUNG, TimeoutMs, out var result);
             return ok == IntPtr.Zero ? ExitCode.NoAnswer : (ExitCode)(int)result;
         }
         finally { Marshal.FreeHGlobal(buffer); }
