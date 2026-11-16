@@ -515,19 +515,15 @@ public partial class App : Application
     /// <summary>Persists settings (plus an optional registry change); reports failures instead of hiding them.</summary>
     private void TrySave(Action? alsoDo = null)
     {
-        try
+        foreach (var problem in SaveSteps.Run(() =>
         {
-            alsoDo?.Invoke();
             // An automatic "on" follows a running program: it is never saved as the user's preference.
             var saved = _settings.CompetitiveMode;
             if (_autoMode.IsAutomatic) _settings.CompetitiveMode = false;
             try { _store.Save(_settings); }
             finally { _settings.CompetitiveMode = saved; }
-        }
-        catch (Exception ex)
-        {
-            _tray?.Notify("Sonic Screwdriver", $"Could not save settings: {ex.Message}. Changes apply until Sonic Screwdriver restarts.");
-        }
+        }, alsoDo))
+            _tray?.Notify("Sonic Screwdriver", problem);
     }
 
     /// <summary>The flyout is created on first use and trims memory when hidden.</summary>
