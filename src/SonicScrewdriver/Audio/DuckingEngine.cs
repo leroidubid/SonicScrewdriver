@@ -86,14 +86,17 @@ public sealed class DuckingEngine
     private readonly Func<DuckingSettings> _settings;
     private readonly DuckLedger _ledger;
     private readonly Func<float?>? _peakSource;
+    private readonly Func<bool>? _blocked;
     private readonly HashSet<string> _held = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _letGo = new(StringComparer.OrdinalIgnoreCase);
     private long? _loudSince, _quietSince;
 
     /// <param name="ledger">Shared with the other engines so that levels always come back; a private one when null.</param>
+    /// <param name="blocked">True while the engine must not touch anything (competitive mode): a late tick then restores what is lowered and does nothing else.</param>
     /// <param name="peakSource">The trigger level (0..1, null = unavailable); when null the voice apps of the list are used.</param>
-    public DuckingEngine(IAudioSessionService audio, Func<DuckingSettings> settings, DuckLedger? ledger = null, Func<float?>? peakSource = null)
+    public DuckingEngine(IAudioSessionService audio, Func<DuckingSettings> settings, DuckLedger? ledger = null, Func<float?>? peakSource = null, Func<bool>? blocked = null)
     {
+        _blocked = blocked;
         _audio = audio;
         _settings = settings;
         _ledger = ledger ?? new DuckLedger(audio);
@@ -109,6 +112,7 @@ public sealed class DuckingEngine
     /// <summary>One look at the trigger level at time <paramref name="nowMs"/> (any steady clock, in milliseconds).</summary>
     public void Tick(long nowMs)
     {
+        if (_blocked?.Invoke() == true) { Restore(); return; }
         var cfg = _settings();
         var threshold = cfg.ThresholdPercent / 100f;
         var loud = false;

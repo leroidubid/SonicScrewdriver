@@ -5,6 +5,25 @@ namespace SonicScrewdriver.Audio;
 /// <summary>What applying a profile did: apps set, apps that are not playing (skipped), and whether the master was set.</summary>
 public readonly record struct ProfileResult(int Applied, int Missing, bool MasterSet);
 
+/// <summary>Profiles started by a program are applied again a few seconds later (the app opens its audio session late).</summary>
+public sealed class ProfileRetry
+{
+    private readonly List<VolumeProfile> _profiles = new();
+
+    public bool Pending => _profiles.Count > 0;
+    public void Add(VolumeProfile profile) => _profiles.Add(profile);
+    public void Clear() => _profiles.Clear();
+
+    /// <summary>Applies the waiting profiles once and forgets them; nothing is written while <paramref name="blocked"/> says so (competitive mode).</summary>
+    public void Run(IAudioSessionService audio, Func<bool>? blocked = null)
+    {
+        var profiles = _profiles.ToList();
+        _profiles.Clear();
+        if (blocked?.Invoke() == true) return;
+        foreach (var p in profiles) ProfileApplier.Apply(p, audio);
+    }
+}
+
 public static class ProfileApplier
 {
     /// <summary>

@@ -23,6 +23,21 @@ public sealed class DevicePriorityPolicy
         return top == defaultId ? null : top;
     }
 
+    /// <summary>
+    /// One evaluation: makes the top plugged-in device the default when needed. Returns its id when the default changed,
+    /// null otherwise. Does nothing while <paramref name="blocked"/> says so (competitive mode).
+    /// </summary>
+    public string? Apply(IAudioSessionService audio, IReadOnlyList<string> order, Func<bool>? blocked = null)
+    {
+        if (blocked?.Invoke() == true) return null;
+        var devices = audio.GetDevices();
+        var pick = Evaluate(order, devices.Select(d => d.Id).ToList(), devices.FirstOrDefault(d => d.IsDefault)?.Id);
+        if (pick is null) return null;
+        if (audio.SetDefaultDevice(pick)) return pick;
+        Reset(); // try again on the next change
+        return null;
+    }
+
     /// <summary>Forget the last top choice (watching stopped, or switching failed): the next evaluation acts again.</summary>
     public void Reset() => _lastTop = null;
 }
