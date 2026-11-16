@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.1] - 2026-11-16
+## [1.0.0] - 2026-11-16
 
 First public release.
 
@@ -79,4 +79,4 @@ First public release.
   anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
   from the file on disk.
 
-[0.1.1]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v0.1.1
+[1.0.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.0.0
