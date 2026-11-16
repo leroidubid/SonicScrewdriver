@@ -10,8 +10,29 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          fetch-depth: 0   # the next step compares the pull request with its base
+
+      # A pull request that only touches documentation skips the build and the tests. The job itself still runs
+      # (and passes): a required check that never starts would block the merge.
+      - name: Does the change touch code?
+        id: changes
+        shell: bash
+        run: |
+          code=true
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            files=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")
+            if [ -n "$files" ] && ! echo "$files" | grep -qvE '^(README\.md|CHANGELOG\.md|CONTRIBUTING\.md|LICENSE|docs/.*)$'; then
+              code=false
+              echo "Documentation only: build and tests skipped." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - if: steps.changes.outputs.code == 'true'
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
         with:
           dotnet-version: 8.0.x
       # Integration tests need a real audio device, which CI runners do not have.
-      - run: dotnet test -c Release --filter "Category!=Integration"
+      - if: steps.changes.outputs.code == 'true'
+        run: dotnet test -c Release --filter "Category!=Integration"
