@@ -83,7 +83,8 @@ the media keys and act on the app you choose.
    (the installer checks and links to it).
 2. From the Releases page, download either:
    - `SonicScrewdriver-Setup-x.y.z.exe`: per-user install, no admin rights, Start menu shortcut,
-     optional start with Windows, clean uninstall;
+     optional start with Windows, clean uninstall, available in English, French, German,
+     Spanish, Italian and Brazilian Portuguese (it follows the Windows display language);
    - or `SonicScrewdriver.exe`: portable, just run it.
 3. Right-click the tray icon, choose **Settings**, and add your shortcuts.
 
