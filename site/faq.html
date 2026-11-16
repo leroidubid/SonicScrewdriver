@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FAQ - Sonic Screwdriver</title>
-  <meta name="description" content="Frequently asked questions about Sonic Screwdriver: keyboard hook, anti-cheat, SmartScreen, Windows 11.">
+  <meta name="description" content="Answers on the keyboard hook, anti-cheat, full-screen games, the SmartScreen warning, per-tab browser volume, Windows 11, settings, uninstalling and the license.">
   <meta name="theme-color" content="#1b1b1d">
   <link rel="icon" href="img/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Sonic Screwdriver">
   <meta property="og:title" content="FAQ - Sonic Screwdriver">
-  <meta property="og:description" content="Frequently asked questions about Sonic Screwdriver: keyboard hook, anti-cheat, SmartScreen, Windows 11.">
+  <meta property="og:description" content="Answers on the keyboard hook, anti-cheat, full-screen games, the SmartScreen warning, per-tab browser volume, Windows 11, settings, uninstalling and the license.">
   <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/faq.html">
   <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -38,8 +38,45 @@
 
   <main id="main" class="wrap prose">
     <h1>FAQ</h1>
-    <!-- PLACEHOLDER: agent B fills this page. Keep the header, footer and head as they are. -->
-    <p>This page is being written.</p>
+
+    <h2 id="why-hook">Why does it use a keyboard hook?</h2>
+    <p>The shortcuts live on the media keys with a modifier (<kbd>Shift</kbd> + <kbd>Vol&minus;</kbd>), and the app has to see those keys to act on one app instead of the whole system. The hook only looks at the six media keys and the keys you choose to remap to them; no other key is read or stored. Shortcuts on other keys (free shortcuts) use the Windows <code>RegisterHotKey</code> function instead, with no hook. <a href="security.html">More on security</a>.</p>
+
+    <h2 id="cheat">Is it a cheat?</h2>
+    <p>No: it installs no driver, injects nothing into other programs and never reads their memory. Anti-cheat systems are opaque, though, and a global keyboard hook can look suspicious to some of them, so compatibility cannot be guaranteed. For online games with strict anti-cheat, turn on Competitive mode or quit the app. <a href="games.html">Games and anti-cheat</a>.</p>
+
+    <h2 id="fullscreen">Does it work in full-screen games?</h2>
+    <p>That is the reason it exists: changing the volume of several apps quickly while a game runs full screen, without leaving the game. The shortcuts act on the media keys, so the game keeps focus. For games with strict anti-cheat, see Competitive mode, which switches the hook and the overlay off.</p>
+
+    <h2 id="smartscreen">Why does Windows SmartScreen warn me?</h2>
+    <p>The files are not code-signed. Click <strong>More info</strong>, then <strong>Run anyway</strong>. You can check the download against <code>SHA256SUMS.txt</code> and verify the build attestation: see <a href="download.html#verify">Verify your download</a>. A few antivirus engines also flagged an early build: <a href="security.html#false-positives">antivirus false positives</a>.</p>
+
+    <h2 id="browser-tabs">Can I set the volume of one browser tab?</h2>
+    <p>No. All tabs and installed web apps of a browser share a single volume, because the browser plays all their audio through one process.</p>
+
+    <h2 id="windows-11">Does it work on Windows 11?</h2>
+    <p>It is built for Windows 10 and 11, but only Windows 10 22H2 (build 19045) has been tried by the author so far. Windows 11 is not tested yet. The default device change and the per-app output use undocumented Windows interfaces, so a new Windows build can break them: please <a href="https://github.com/leroidubid/SonicScrewdriver/issues">open an issue</a> with your Windows version. <a href="games.html#tested-systems">Tested systems</a>.</p>
+
+    <h2 id="no-media-keys">My keyboard has no media keys.</h2>
+    <p>Remap them: in the settings, choose which key acts as Vol+, Vol&minus;, Mute, Play/Pause, Next and Previous (for example <kbd>F10</kbd>, <kbd>F11</kbd>, <kbd>F12</kbd>), or use free shortcuts on any key combination. <a href="features.html#remap">Remap the media keys</a>.</p>
+
+    <h2 id="elevated">Shortcuts do nothing when an administrator window is in front.</h2>
+    <p>When an elevated window has focus, Windows does not pass keys to the app unless it runs elevated too.</p>
+
+    <h2 id="settings">Where are the settings stored?</h2>
+    <p>In <code>%APPDATA%\SonicScrewdriver\settings.json</code>.</p>
+
+    <h2 id="uninstall">How do I uninstall it?</h2>
+    <p>The installer provides a clean uninstall. For the portable exe, quit it from the tray menu and delete the file. <a href="download.html#uninstall">Details</a>.</p>
+
+    <h2 id="license">What is the license? Can I use it at work, or commercially?</h2>
+    <p>Sonic Screwdriver is under <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/LICENSE">MIT + Commons Clause</a>: a source-available license, not an OSI-approved open-source one. You can use it, at home or at work, modify it, fork it, and share it for free. You cannot sell it, sell a modified version, or sell a service whose value comes mainly from it (paid hosting, paid support, a paid product built around it) without the author's written permission. Want to use it commercially? Contact the author through the <a href="https://github.com/leroidubid">GitHub profile</a>. Contributions are welcome: see <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+
+    <h2 id="network">Does it use the network or collect data?</h2>
+    <p>No. The app does not use the network and collects nothing. This website does not use analytics or load anything from a third party.</p>
+
+    <h2 id="bbc">The name?</h2>
+    <p>It nods to a certain time traveller's favourite tool. This project is not affiliated with or endorsed by the BBC.</p>
   </main>
 
   <footer class="site-footer">

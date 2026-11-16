@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Games and anti-cheat - Sonic Screwdriver</title>
-  <meta name="description" content="Competitive mode, what it switches off and the games and systems tested with Sonic Screwdriver.">
+  <meta name="description" content="Competitive mode for online games: what it switches off, automatic mode, the toggle shortcut, an honest anti-cheat statement and the list of tested games.">
   <meta name="theme-color" content="#1b1b1d">
   <link rel="icon" href="img/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Sonic Screwdriver">
   <meta property="og:title" content="Games and anti-cheat - Sonic Screwdriver">
-  <meta property="og:description" content="Competitive mode, what it switches off and the games and systems tested with Sonic Screwdriver.">
+  <meta property="og:description" content="Competitive mode for online games: what it switches off, automatic mode, the toggle shortcut, an honest anti-cheat statement and the list of tested games.">
   <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/games.html">
   <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -38,8 +38,74 @@
 
   <main id="main" class="wrap prose">
     <h1>Games and anti-cheat</h1>
-    <!-- PLACEHOLDER: agent B fills this page. Keep the header, footer and head as they are. -->
-    <p>This page is being written.</p>
+
+    <h2 id="statement">An honest statement</h2>
+    <!-- keep in sync with README -->
+    <p>Sonic Screwdriver is not a cheat: it installs no driver, injects nothing into other programs and never reads their memory. Even so, anti-cheat systems are opaque, and a global keyboard hook can look suspicious to some of them, so compatibility cannot be guaranteed.</p>
+
+    <h2 id="competitive-mode">Competitive mode</h2>
+    <!-- keep in sync with README -->
+    <p>For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlEye), turn on <strong>Competitive mode</strong> (tray menu, or Settings) or quit the app first. In that mode:</p>
+    <!-- keep in sync with README -->
+    <table>
+      <thead>
+        <tr><th>Switched off</th><th>What you lose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>The keyboard hook</td><td>All modifier + media key shortcuts, remapped media keys, and output device cycling</td></tr>
+        <tr><td>The on-screen display</td><td>The overlay shown after a shortcut</td></tr>
+        <tr><td>Mouse wheel on the tray icon</td><td>Master volume with the wheel</td></tr>
+        <tr><td>Lookups of other programs</td><td>App icons and friendly names (the exe name and a generic icon are shown instead)</td></tr>
+        <tr><td>Observers and extra shortcuts</td><td>Automatic ducking, streamer mode, microphone shortcut and mixer section, remembered routing, the output priority list, the now-playing line, the maximum-volume watch, program-start profiles, the mute-everything and profile shortcuts, and the command line (except <code>--toggle-competitive</code>)</td></tr>
+      </tbody>
+    </table>
+    <!-- keep in sync with README -->
+    <p>The mixer, the sliders, switching the default output and the physical media keys keep working. Competitive mode lowers the risk but does not remove it: quitting the app is the safest choice.</p>
+    <p><img src="img/settings-competitive.png" width="270" height="375" alt="Settings with Competitive mode on: greyed options and red labels on the cards and tabs"></p>
+
+    <h2 id="automatic">Automatic mode</h2>
+    <!-- keep in sync with README -->
+    <p>Off by default. In the settings you can list the games to protect: while a ticked program runs, competitive mode turns on by itself, and it turns off again when the program exits. A program is spotted by its exe name in the Windows process list, read from one snapshot every 5 seconds: the process is never opened, so no handle or access right touches the game. Nothing runs while the list has no ticked program. If you switch the mode yourself, the automation steps aside: a mode you turned on stays on, and one you turned off stays off until the program has exited. An automatic &ldquo;on&rdquo; is not saved as your preference.</p>
+
+    <h2 id="toggle-shortcut">Toggle shortcut</h2>
+    <!-- keep in sync with README -->
+    <p>In the settings you can assign a key combination (for example <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F9</kbd>) that switches competitive mode on and off, with a short notification each time. It has to work while the keyboard hook is uninstalled, so it does not use a hook: it is registered with the Windows <code>RegisterHotKey</code> function, where Windows itself matches the combination and tells the app. The app never sees any other key.</p>
+    <p>The trade-off: this is a documented, ordinary API that many programs use and is much less intrusive than a hook, but it is still one registration that stays active in competitive mode. If you want nothing at all, leave the shortcut empty (the default) and use the tray menu, or quit the app.</p>
+
+    <h2 id="tested-games">Tested games</h2>
+    <!-- keep in sync with README -->
+    <p>&ldquo;Tested&rdquo; means tried by the author with no problem; &ldquo;Not yet&rdquo; means not tested yet. A tick says nothing about a future anti-cheat update, and a game that is not listed is simply untested. The last column follows the advice above: for strict anti-cheat, use Competitive mode (or quit the app).</p>
+    <table>
+      <thead>
+        <tr><th>Game</th><th>Anti-cheat</th><th>Tested</th><th>Needs Competitive mode</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Rocket League</td><td>EasyAntiCheat</td><td>Yes</td><td>Recommended</td></tr>
+        <tr><td>Valorant</td><td>Vanguard (kernel driver)</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Counter-Strike 2 through FACEIT</td><td>FACEIT Anti-Cheat (kernel driver)</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Call of Duty: Warzone</td><td>Ricochet (kernel driver)</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Fortnite</td><td>EasyAntiCheat and BattlEye</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Apex Legends</td><td>EasyAntiCheat</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Rainbow Six Siege</td><td>BattlEye</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>PUBG</td><td>BattlEye</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Destiny 2</td><td>BattlEye</td><td>Not yet</td><td>Recommended</td></tr>
+        <tr><td>Rust</td><td>EasyAntiCheat</td><td>Not yet</td><td>Recommended</td></tr>
+      </tbody>
+    </table>
+    <!-- keep in sync with README -->
+    <p>Tried a game that is not on the list, or hit a problem? Please <a href="https://github.com/leroidubid/SonicScrewdriver/issues">open an issue</a> with the game, the anti-cheat message and whether Competitive mode was on.</p>
+
+    <h2 id="tested-systems">Tested systems</h2>
+    <!-- keep in sync with README -->
+    <p>&ldquo;Tested&rdquo; means tried by the author; &ldquo;Not yet&rdquo; means not tested yet. The installer asks for Windows 10 version 1809 or later and the app is built for 64-bit Windows.</p>
+    <ul>
+      <li>Windows 10 22H2 (build 19045): tested</li>
+      <li>Windows 11: not yet</li>
+      <li>Windows 10, older versions (1809 to 21H2): not yet</li>
+      <li>Windows 11 on ARM (runs through x64 emulation): not yet</li>
+    </ul>
+    <!-- keep in sync with README -->
+    <p>The default device change and the per-app output use undocumented Windows interfaces, so a new Windows build can break them: please <a href="https://github.com/leroidubid/SonicScrewdriver/issues">open an issue</a> with your Windows version.</p>
   </main>
 
   <footer class="site-footer">

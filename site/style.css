@@ -109,6 +109,9 @@ th { background: var(--panel-2); }
 /* Text pages */
 .prose { max-width: 46rem; padding-top: 2rem; }
 .shots { display: flex; flex-wrap: wrap; gap: 1rem; }
+.prose code { overflow-wrap: anywhere; }
+.prose pre code { overflow-wrap: normal; }
+@media (max-width: 40rem) { html { scroll-padding-top: 9rem; } }
 
 @media (min-width: 52rem) {
   .hero { grid-template-columns: 1.2fr 1fr; padding-top: 4rem; }

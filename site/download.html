@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Download - Sonic Screwdriver</title>
-  <meta name="description" content="Download Sonic Screwdriver for Windows: installer or portable exe, requirements and how to verify the files.">
+  <meta name="description" content="Download Sonic Screwdriver for Windows 10 and 11: per-user installer or portable exe, requirements, how to verify the files and what the SmartScreen warning means.">
   <meta name="theme-color" content="#1b1b1d">
   <link rel="icon" href="img/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Sonic Screwdriver">
   <meta property="og:title" content="Download - Sonic Screwdriver">
-  <meta property="og:description" content="Download Sonic Screwdriver for Windows: installer or portable exe, requirements and how to verify the files.">
+  <meta property="og:description" content="Download Sonic Screwdriver for Windows 10 and 11: per-user installer or portable exe, requirements, how to verify the files and what the SmartScreen warning means.">
   <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/download.html">
   <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -38,8 +38,48 @@
 
   <main id="main" class="wrap prose">
     <h1>Download</h1>
-    <!-- PLACEHOLDER: agent B fills this page. Keep the header, footer and head as they are. -->
-    <p>This page is being written.</p>
+    <p class="cta">
+      <a class="button" href="https://github.com/leroidubid/SonicScrewdriver/releases/latest">Download for Windows<span class="ver" data-release-version hidden></span></a>
+    </p>
+    <p class="small muted">The button opens the latest release on GitHub.
+    <span data-release-date-wrap hidden>Released <span data-release-date></span>.</span>
+    <span data-release-links hidden>Direct links: <a data-release-installer href="https://github.com/leroidubid/SonicScrewdriver/releases/latest">Installer</a> &middot;
+    <a data-release-portable href="https://github.com/leroidubid/SonicScrewdriver/releases/latest">Portable exe</a></span></p>
+
+    <h2 id="requirements">Requirements</h2>
+    <!-- keep in sync with README -->
+    <ul>
+      <li>Windows 10 version 1809 or later, 64-bit. See <a href="games.html#tested-systems">which systems were tested</a>: Windows 10 22H2 is the only one checked so far, Windows 11 is not tested yet.</li>
+      <li>The <a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 Desktop Runtime</a>, if you do not have it (the installer checks and links to it).</li>
+    </ul>
+
+    <h2 id="install">Which file?</h2>
+    <p>On the Releases page, download either:</p>
+    <!-- keep in sync with README -->
+    <ul>
+      <li><code>SonicScrewdriver-Setup-x.y.z.exe</code>: per-user install, no admin rights, Start menu shortcut, optional start with Windows, clean uninstall, available in English, French, German, Spanish, Italian and Brazilian Portuguese (it follows the Windows display language);</li>
+      <li>or <code>SonicScrewdriver.exe</code>: portable, just run it.</li>
+    </ul>
+    <p>Then right-click the tray icon, choose <strong>Settings</strong>, and add your shortcuts. Settings are stored in <code>%APPDATA%\SonicScrewdriver\settings.json</code>.</p>
+
+    <h2 id="smartscreen">SmartScreen warning</h2>
+    <!-- keep in sync with README -->
+    <p>Windows SmartScreen may warn on first run because the files are not code-signed: click <strong>More info</strong>, then <strong>Run anyway</strong>. Some antivirus engines may also flag the files: see <a href="security.html#false-positives">antivirus false positives</a>.</p>
+
+    <h2 id="verify">Verify your download</h2>
+    <!-- keep in sync with README -->
+    <ul>
+      <li>Releases are built by GitHub Actions from the tagged commit and come with <code>SHA256SUMS.txt</code>: compare the hash of your file with it.</li>
+      <li>You can check that a download was built from this repository (needs the <a href="https://cli.github.com">GitHub CLI</a>):</li>
+    </ul>
+<pre><code>gh attestation verify SonicScrewdriver-Setup-x.y.z.exe --repo leroidubid/SonicScrewdriver</code></pre>
+    <p>More on the build and scan chain: <a href="security.html">Security</a>.</p>
+
+    <h2 id="uninstall">Uninstall</h2>
+    <p>The installer provides a clean uninstall. The portable exe has nothing to uninstall: quit it from the tray menu and delete the file. Settings stay in <code>%APPDATA%\SonicScrewdriver</code> until you delete that folder yourself.</p>
+
+    <h2 id="build">Build it yourself</h2>
+    <p>The source is on <a href="https://github.com/leroidubid/SonicScrewdriver">GitHub</a> (source-available: MIT + Commons Clause). Building requires the .NET 8 SDK; the build commands are in the README.</p>
   </main>
 
   <footer class="site-footer">

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Security - Sonic Screwdriver</title>
-  <meta name="description" content="No network, nothing collected: how Sonic Screwdriver is built, scanned and verified.">
+  <meta name="description" content="What Sonic Screwdriver reads, how releases are built and scanned, how to check a download, and what to know about antivirus false positives.">
   <meta name="theme-color" content="#1b1b1d">
   <link rel="icon" href="img/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Sonic Screwdriver">
   <meta property="og:title" content="Security - Sonic Screwdriver">
-  <meta property="og:description" content="No network, nothing collected: how Sonic Screwdriver is built, scanned and verified.">
+  <meta property="og:description" content="What Sonic Screwdriver reads, how releases are built and scanned, how to check a download, and what to know about antivirus false positives.">
   <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/security.html">
   <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -38,8 +38,31 @@
 
   <main id="main" class="wrap prose">
     <h1>Security</h1>
-    <!-- PLACEHOLDER: agent B fills this page. Keep the header, footer and head as they are. -->
-    <p>This page is being written.</p>
+
+    <h2 id="what-it-reads">What it reads, what it sends</h2>
+    <!-- keep in sync with README -->
+    <p>The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default); no other key is read or stored. The app does not use the network and collects nothing.</p>
+    <p>The optional competitive-mode toggle shortcut and the free shortcuts do not use the hook at all: they use the Windows <code>RegisterHotKey</code> function, where Windows matches the combination itself. See <a href="games.html#toggle-shortcut">Games and anti-cheat</a>.</p>
+    <p>To lower the footprint further, the app opens other programs with the minimal access right only: it reads their path, and app names and icons come from the file on disk. It does not request the right to read their memory (<a href="changelog.html">changelog 1.0.0</a>).</p>
+
+    <h2 id="build-chain">How releases are built</h2>
+    <!-- keep in sync with README -->
+    <p>Releases are built by GitHub Actions from the tagged commit, scanned with Microsoft Defender and <a href="https://www.virustotal.com">VirusTotal</a> (the report links are added to the release notes), and come with <code>SHA256SUMS.txt</code>.</p>
+
+    <h2 id="checksums">Checksums</h2>
+    <p>Compare the hash of your download with <code>SHA256SUMS.txt</code> from the same release.</p>
+
+    <h2 id="attestation">Attestation</h2>
+    <!-- keep in sync with README -->
+    <p>You can check that a download was built from this repository (needs the <a href="https://cli.github.com">GitHub CLI</a>):</p>
+<pre><code>gh attestation verify SonicScrewdriver-Setup-x.y.z.exe --repo leroidubid/SonicScrewdriver</code></pre>
+
+    <h2 id="false-positives">Antivirus false positives</h2>
+    <!-- keep in sync with README -->
+    <p>The files are not code-signed, and a few machine-learning engines on VirusTotal (for example SecureAge and Acronis) flagged an early build as suspicious, while Microsoft Defender and the other engines found nothing. These engines react to the API calls any keyboard-shortcut tool needs (a keyboard hook, key injection, start with Windows), not to anything harmful. To check a download yourself, compare its hash with <code>SHA256SUMS.txt</code>, verify the attestation above, or read and build the source. Because the files are not code-signed, Windows SmartScreen may also warn on first run (<a href="download.html#smartscreen">what to do</a>).</p>
+
+    <h2 id="report">Report a vulnerability</h2>
+    <p>Please do not open a public issue for a security problem. Use GitHub private vulnerability reporting: open the <a href="https://github.com/leroidubid/SonicScrewdriver/security">Security tab of the repository</a> and choose <strong>Report a vulnerability</strong>.</p>
   </main>
 
   <footer class="site-footer">
