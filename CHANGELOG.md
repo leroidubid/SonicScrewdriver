@@ -4,7 +4,14 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-17
+
+### Added
+
+- **Website:** https://leroidubid.github.io/SonicScrewdriver/ presents the features, the download (latest release), the
+  command line, competitive mode and the tested games and systems, the security notes, the changelog and an FAQ. Plain
+  HTML and CSS, no tracker and no third-party request. The README gains the tables of tested games (with whether a game
+  needs competitive mode) and of tested Windows versions.
 
 ### Fixed
 
@@ -160,5 +167,6 @@ First public release.
   anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
   from the file on disk.
 
+[1.2.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.2.0
 [1.1.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.1.0
 [1.0.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.0.0
