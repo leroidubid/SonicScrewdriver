@@ -243,19 +243,22 @@ documented, ordinary API that many programs use and is much less intrusive than 
 registration that stays active in competitive mode. If you want nothing at all, leave the shortcut empty (the default)
 and use the tray menu, or quit the app.
 
-**Tested games.** Checked means tried by the author with no problem; unchecked means not tested yet. A tick says
+**Tested games.** What the author tried so far. "Needs Competitive mode" says whether the game works only with the
+mode on (the app runs, but its keyboard hook and overlay may be refused or flagged by the anti-cheat). A result says
 nothing about a future anti-cheat update, and a game that is not listed is simply untested.
 
-- [x] Rocket League (EasyAntiCheat)
-- [ ] Valorant (Vanguard, kernel driver)
-- [ ] Counter-Strike 2 through FACEIT (FACEIT Anti-Cheat, kernel driver)
-- [ ] Call of Duty: Warzone (Ricochet, kernel driver)
-- [ ] Fortnite (EasyAntiCheat and BattlEye)
-- [ ] Apex Legends (EasyAntiCheat)
-- [ ] Rainbow Six Siege (BattlEye)
-- [ ] PUBG (BattlEye)
-- [ ] Destiny 2 (BattlEye)
-- [ ] Rust (EasyAntiCheat)
+| Game | Anti-cheat | Tested | Needs Competitive mode |
+|---|---|---|---|
+| Rocket League | EasyAntiCheat | ✅ Yes | No |
+| Valorant | Vanguard (kernel driver) | ⬜ Not yet | Not known yet |
+| Counter-Strike 2 through FACEIT | FACEIT Anti-Cheat (kernel driver) | ⬜ Not yet | Not known yet |
+| Call of Duty: Warzone | Ricochet (kernel driver) | ⬜ Not yet | Not known yet |
+| Fortnite | EasyAntiCheat and BattlEye | ⬜ Not yet | Not known yet |
+| Apex Legends | EasyAntiCheat | ⬜ Not yet | Not known yet |
+| Rainbow Six Siege | BattlEye | ⬜ Not yet | Not known yet |
+| PUBG | BattlEye | ⬜ Not yet | Not known yet |
+| Destiny 2 | BattlEye | ⬜ Not yet | Not known yet |
+| Rust | EasyAntiCheat | ⬜ Not yet | Not known yet |
 
 Tried a game that is not on the list, or hit a problem? Please
 [open an issue](https://github.com/leroidubid/SonicScrewdriver/issues) with the game, the anti-cheat message and
