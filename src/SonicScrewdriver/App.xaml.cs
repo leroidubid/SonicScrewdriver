@@ -43,11 +43,11 @@ public partial class App : Application
     private MicrophoneService? _mic;
     private readonly DevicePriorityPolicy _devicePriority = new();
     private readonly System.Windows.Threading.DispatcherTimer _priorityTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
-    private readonly RoutingApplier _routing = new(new AudioPolicyRouter());
+    private RoutingApplier _routing = null!;
     private readonly System.Windows.Threading.DispatcherTimer _routeTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
     private readonly ProfileTriggers _profileTriggers = new();
     private readonly System.Windows.Threading.DispatcherTimer _profileRetry = new() { Interval = TimeSpan.FromSeconds(10) };
-    private readonly List<VolumeProfile> _retryProfiles = new();
+    private readonly ProfileRetry _retry = new();
     private readonly System.Windows.Threading.DispatcherTimer _limitTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private readonly AutoCompetitive _autoMode = new();
     private readonly System.Windows.Threading.DispatcherTimer _autoTimer = new() { Interval = TimeSpan.FromSeconds(5) };
@@ -152,12 +152,12 @@ public partial class App : Application
         };
 
         _muteAll = new MuteAll(_audio);
-        _enforcer = new LimitEnforcer(_audio);
+        _routing = new RoutingApplier(new AudioPolicyRouter(), () => _settings.CompetitiveMode);
+        _enforcer = new LimitEnforcer(_audio, () => _settings.CompetitiveMode);
         _profileRetry.Tick += (_, _) =>
         {
             _profileRetry.Stop();
-            foreach (var p in _retryProfiles) ProfileApplier.Apply(p, _audio);
-            _retryProfiles.Clear();
+            _retry.Run(_audio, () => _settings.CompetitiveMode);
         };
         _routeTimer.Tick += (_, _) =>
         {
@@ -170,9 +170,9 @@ public partial class App : Application
             ApplyDevicePriorityNow();
         };
         var ledger = new DuckLedger(_audio); // shared: levels always come back to what the user had
-        _ducking = new DuckingEngine(_audio, () => _settings.Ducking, ledger);
+        _ducking = new DuckingEngine(_audio, () => _settings.Ducking, ledger, blocked: () => _settings.CompetitiveMode);
         _duckTimer.Tick += (_, _) => _ducking.Tick(Environment.TickCount64);
-        _streamer = new DuckingEngine(_audio, () => _settings.Streamer.ToDucking(), ledger, () => _micMeter?.Peak());
+        _streamer = new DuckingEngine(_audio, () => _settings.Streamer.ToDucking(), ledger, () => _micMeter?.Peak(), () => _settings.CompetitiveMode);
         _streamTimer.Tick += (_, _) => _streamer.Tick(Environment.TickCount64);
         _limitTimer.Tick += (_, _) => { _limitTimer.Stop(); _enforcer.Enforce(); };
         _runner = new CommandRunner(_audio, () => _settings.CompetitiveMode, on => SetCompetitive(on, notify: true))
@@ -212,7 +212,7 @@ public partial class App : Application
         _osd.Enabled = !on;
         _tray!.WheelEnabled = !on;
         _tray.SetCompetitive(on);
-        if (on) { _hook!.Dispose(); _muteAll.Restore(); }
+        if (on) { _hook!.Dispose(); _muteAll.Restore(); _profileRetry.Stop(); _retry.Clear(); }
         else InstallHook();
         ApplyHotkeys();
         // Start the session list over: drops process handles when entering the mode, rediscovers names and icons when leaving it.
@@ -268,6 +268,7 @@ public partial class App : Application
 
     private void UpdateDuckTimer()
     {
+        if (_settings.CompetitiveMode || !_settings.Ducking.Enabled) { StopDucking(); return; } // a queued call from before the switch
         var voiceRunning = _settings.Ducking.AppList.Any(a => a.Voice && _audio.GetProcessIds(a.ExeName).Count > 0);
         if (voiceRunning) { if (!_duckTimer.IsEnabled) _duckTimer.Start(); }
         else StopDucking();
@@ -336,16 +337,13 @@ public partial class App : Application
 
     private void ApplyDevicePriorityNow()
     {
-        var devices = _audio.GetDevices();
-        var pick = _devicePriority.Evaluate(_settings.DevicePriority.Select(d => d.Id).ToList(), devices.Select(d => d.Id).ToList(),
-            devices.FirstOrDefault(d => d.IsDefault)?.Id);
-        if (pick is not null && !_audio.SetDefaultDevice(pick)) _devicePriority.Reset(); // try again on the next change
-        else if (pick is not null && devices.FirstOrDefault(d => d.Id == pick)?.Name is { } name)
+        var pick = _devicePriority.Apply(_audio, _settings.DevicePriority.Select(d => d.Id).ToList(), () => _settings.CompetitiveMode);
+        if (pick is not null && _audio.GetDevices().FirstOrDefault(d => d.Id == pick)?.Name is { } name)
             _osd.Show(null, name, "Default output (priority list)");
     }
 
     // Any thread: wakes the UI thread, which evaluates once the burst of events is over.
-    private void OnPriorityEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_priorityTimer.IsEnabled) _priorityTimer.Start(); });
+    private void OnPriorityEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_settings.CompetitiveMode && !_priorityTimer.IsEnabled) _priorityTimer.Start(); });
 
     /// <summary>
     /// The routing rules are applied when an app's session appears. The observer runs only while there is a rule and
@@ -362,7 +360,7 @@ public partial class App : Application
     }
 
     // Any thread: wakes the UI thread, which routes once the burst of events is over.
-    private void OnRoutingEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_routeTimer.IsEnabled) _routeTimer.Start(); });
+    private void OnRoutingEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_settings.CompetitiveMode && !_routeTimer.IsEnabled) _routeTimer.Start(); });
 
     /// <summary>
     /// Hands the maximum volumes to the audio service (sliders, shortcuts and commands use them at once). The watch that
@@ -381,7 +379,7 @@ public partial class App : Application
     }
 
     // Any thread: only wakes the UI thread, which re-checks once the burst of events is over.
-    private void OnLimitEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_limitTimer.IsEnabled) _limitTimer.Start(); });
+    private void OnLimitEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_settings.CompetitiveMode && !_limitTimer.IsEnabled) _limitTimer.Start(); });
 
     /// <summary>The bindings and key remaps become what the keyboard hook decides with (read on the hook thread).</summary>
     private void RebuildDecider()
@@ -486,7 +484,7 @@ public partial class App : Application
             foreach (var profile in _profileTriggers.Started(_settings.Profiles, running))
             {
                 // An app often opens its audio session a few seconds after it starts: apply again 10 s later.
-                if (ApplyProfile(profile.Name)) { _retryProfiles.Add(profile); _profileRetry.Stop(); _profileRetry.Start(); }
+                if (ApplyProfile(profile.Name)) { _retry.Add(profile); _profileRetry.Stop(); _profileRetry.Start(); }
             }
         _autoTimer.IsEnabled = autoAny || (!_settings.CompetitiveMode && ProfileTriggers.Any(_settings.Profiles));
     }
@@ -596,9 +594,9 @@ public partial class App : Application
         _priorityTimer.Stop();
         _profileRetry.Stop();
         _duckTimer.Stop();
-        _ducking?.Restore();
         _streamTimer.Stop();
-        _streamer?.Restore();
+        // Every lowered or muted app goes back to what the user had; one failure must not skip the others.
+        ShutdownSteps.RunAll(() => _ducking?.Restore(), () => _streamer?.Restore(), () => _muteAll?.Restore());
         _micMeter?.Dispose();
         _commandWindow?.Dispose();
         _mic?.Dispose();

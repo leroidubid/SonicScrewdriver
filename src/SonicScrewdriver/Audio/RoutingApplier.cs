@@ -25,8 +25,10 @@ public sealed class RoutingApplier
 {
     private readonly IAppRouter _router;
     private readonly HashSet<int> _handled = new();
+    private readonly Func<bool>? _blocked;
 
-    public RoutingApplier(IAppRouter router) => _router = router;
+    /// <param name="blocked">True while nothing may be routed (competitive mode).</param>
+    public RoutingApplier(IAppRouter router, Func<bool>? blocked = null) { _router = router; _blocked = blocked; }
 
     /// <summary>Forget the processes already handled (the observer stopped).</summary>
     public void Reset() => _handled.Clear();
@@ -34,6 +36,7 @@ public sealed class RoutingApplier
     /// <summary>Returns the number of processes that were routed.</summary>
     public int Apply(IReadOnlyList<RoutingRule> rules, IReadOnlyCollection<string> activeDeviceIds, Func<string, IReadOnlyList<int>> processIds)
     {
+        if (_blocked?.Invoke() == true) return 0;
         var routed = 0;
         var alive = new HashSet<int>();
         foreach (var rule in rules)

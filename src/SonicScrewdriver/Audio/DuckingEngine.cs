@@ -15,6 +15,7 @@ public sealed class DuckLedger
     private sealed class Entry
     {
         public float Original, Applied;
+        public bool Pending; // lowered level still there, the restore failed while the app was running
         public readonly Dictionary<object, float> Factors = new();
     }
 
@@ -44,6 +45,7 @@ public sealed class DuckLedger
         if (_entries.TryGetValue(exe, out var entry))
         {
             entry.Factors[owner] = factor;
+            entry.Pending = false;
             Apply(exe, entry);
             return true;
         }
@@ -60,12 +62,28 @@ public sealed class DuckLedger
     public void Release(object owner, string exe)
     {
         if (!_entries.TryGetValue(exe, out var entry) || !entry.Factors.Remove(owner)) return;
-        if (entry.Factors.Count == 0) { _audio.SetVolume(exe, entry.Original); _entries.Remove(exe); }
+        if (entry.Factors.Count == 0) Finish(exe, entry);
         else Apply(exe, entry);
+    }
+
+    /// <summary>Tries again the restores that failed while their app was still running (a no-op when there are none).</summary>
+    public void RetryPending()
+    {
+        foreach (var (exe, entry) in _entries.Where(kv => kv.Value.Pending && kv.Value.Factors.Count == 0).ToList()) Finish(exe, entry);
+    }
+
+    /// <summary>The last owner is gone: back to the original, unless the user moved the slider or the app is gone.</summary>
+    private void Finish(string exe, Entry entry)
+    {
+        if (_audio.GetVolume(exe) is not { } current) { _entries.Remove(exe); return; } // the app has no session any more: nothing to restore
+        if (Math.Abs(current - entry.Applied) > Tolerance) { _entries.Remove(exe); return; } // the user moved it: their level stays
+        if (_audio.SetVolume(exe, entry.Original) || _audio.SetVolume(exe, entry.Original)) _entries.Remove(exe);
+        else entry.Pending = true; // the app is still there and the write failed twice: keep the entry for a later retry
     }
 
     private void Apply(string exe, Entry entry)
     {
+        if (_audio.GetVolume(exe) is { } now && Math.Abs(now - entry.Applied) > Tolerance) { _entries.Remove(exe); return; } // the user took over
         var target = entry.Original * entry.Factors.Values.Min();
         if (Math.Abs(target - entry.Applied) <= 0.0005f) return;
         if (_audio.SetVolume(exe, target)) entry.Applied = _audio.GetVolume(exe) ?? target;
@@ -86,14 +104,17 @@ public sealed class DuckingEngine
     private readonly Func<DuckingSettings> _settings;
     private readonly DuckLedger _ledger;
     private readonly Func<float?>? _peakSource;
+    private readonly Func<bool>? _blocked;
     private readonly HashSet<string> _held = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _letGo = new(StringComparer.OrdinalIgnoreCase);
     private long? _loudSince, _quietSince;
 
     /// <param name="ledger">Shared with the other engines so that levels always come back; a private one when null.</param>
+    /// <param name="blocked">True while the engine must not touch anything (competitive mode): a late tick then restores what is lowered and does nothing else.</param>
     /// <param name="peakSource">The trigger level (0..1, null = unavailable); when null the voice apps of the list are used.</param>
-    public DuckingEngine(IAudioSessionService audio, Func<DuckingSettings> settings, DuckLedger? ledger = null, Func<float?>? peakSource = null)
+    public DuckingEngine(IAudioSessionService audio, Func<DuckingSettings> settings, DuckLedger? ledger = null, Func<float?>? peakSource = null, Func<bool>? blocked = null)
     {
+        _blocked = blocked;
         _audio = audio;
         _settings = settings;
         _ledger = ledger ?? new DuckLedger(audio);
@@ -109,6 +130,7 @@ public sealed class DuckingEngine
     /// <summary>One look at the trigger level at time <paramref name="nowMs"/> (any steady clock, in milliseconds).</summary>
     public void Tick(long nowMs)
     {
+        if (_blocked?.Invoke() == true) { Restore(); return; }
         var cfg = _settings();
         var threshold = cfg.ThresholdPercent / 100f;
         var loud = false;
@@ -155,6 +177,7 @@ public sealed class DuckingEngine
         foreach (var exe in _held) _ledger.Release(this, exe);
         _held.Clear();
         _letGo.Clear();
+        _ledger.RetryPending();
         Active = false;
         _loudSince = _quietSince = null;
     }

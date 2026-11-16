@@ -32,12 +32,15 @@ public sealed class VolumeLimits
 public sealed class LimitEnforcer
 {
     private readonly IAudioSessionService _audio;
+    private readonly Func<bool>? _blocked;
 
-    public LimitEnforcer(IAudioSessionService audio) => _audio = audio;
+    /// <param name="blocked">True while nothing may be written (competitive mode).</param>
+    public LimitEnforcer(IAudioSessionService audio, Func<bool>? blocked = null) { _audio = audio; _blocked = blocked; }
 
     /// <summary>Returns the number of apps that were brought back.</summary>
     public int Enforce()
     {
+        if (_blocked?.Invoke() == true) return 0;
         var fixedCount = 0;
         foreach (var exe in _audio.Limits.Exes.ToList())
         {

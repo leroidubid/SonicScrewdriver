@@ -44,13 +44,14 @@ public sealed class KeyboardHook : IDisposable
         _thread = new Thread(() =>
         {
             _threadId = GetCurrentThreadId();
-            _hook = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(null), 0);
-            if (_hook == IntPtr.Zero) error = new Win32Exception(Marshal.GetLastWin32Error());
+            var hook = _hook = SetWindowsHookEx(WH_KEYBOARD_LL, _proc, GetModuleHandle(null), 0);
+            if (hook == IntPtr.Zero) error = new Win32Exception(Marshal.GetLastWin32Error());
             ready.Set();
-            if (_hook == IntPtr.Zero) return;
+            if (hook == IntPtr.Zero) return;
             while (GetMessage(out _, IntPtr.Zero, 0, 0) > 0) { }
-            UnhookWindowsHookEx(_hook);
-            _hook = IntPtr.Zero;
+            // This thread's own hook: if Dispose gave up waiting (1 s) and a new Install already replaced _hook, leave that one alone.
+            UnhookWindowsHookEx(hook);
+            Interlocked.CompareExchange(ref _hook, IntPtr.Zero, hook);
         })
         {
             IsBackground = true,
