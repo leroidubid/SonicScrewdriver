@@ -44,7 +44,7 @@ jobs:
           "### Microsoft Defender`n$result (signatures $sig)`n" | Out-File $env:GITHUB_STEP_SUMMARY -Append
           if ($code -ne 0) { throw "Defender scan failed with exit code $code" }
 
-      # Adds the report links to the release notes when run from a tag.
+      # Sends the files to VirusTotal; the report links are added to the release notes by the last step.
       - name: VirusTotal
         id: vt
         if: ${{ env.VT_API_KEY != '' }}
@@ -52,7 +52,7 @@ jobs:
         with:
           vt_api_key: ${{ env.VT_API_KEY }}
           github_token: ${{ github.token }}
-          update_release_body: ${{ github.ref_type == 'tag' }}
+          update_release_body: false   # the action wrote nothing; the step below does it
           files: scan/*.exe
 
       - name: VirusTotal summary
@@ -66,3 +66,18 @@ jobs:
             # "file=url" pairs; the url itself ends with "=", so split on the first "=" only
             echo "$ANALYSIS" | tr ',' '\n' | sed -E 's|^scan[\\/]||; s|^([^=]+)=(.*)$|- [\1](\2)|'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Add the VirusTotal links to the release notes
+        if: ${{ env.VT_API_KEY != '' && steps.vt.outputs.analysis != '' }}
+        shell: bash
+        env:
+          ANALYSIS: ${{ steps.vt.outputs.analysis }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > body.md
+          if grep -q '^### VirusTotal' body.md; then echo "links already in the notes"; exit 0; fi
+          {
+            echo
+            echo "### VirusTotal"
+            echo "$ANALYSIS" | tr ',' '\n' | sed -E 's|^scan[\\/]||; s|^([^=]+)=(.*)$|- [\1](\2)|'
+          } >> body.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file body.md
