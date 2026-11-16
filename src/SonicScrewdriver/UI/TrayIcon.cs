@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using SonicScrewdriver.Interop;
 
 namespace SonicScrewdriver.UI;
 
@@ -208,14 +209,9 @@ public sealed class TrayIcon : IDisposable
             _menu.ProfileRequested += (_, name) => ProfileRequested?.Invoke(this, name);
             _menu.QuitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
         }
-        GetCursorPos(out var pt);
         // The cursor sits on the taskbar: the menu is placed inside the work area of that monitor.
-        var work = new Rect(pt.X - 1, pt.Y - 1, 2, 2);
-        var monitorInfo = new MONITORINFO { cbSize = (uint)Marshal.SizeOf<MONITORINFO>() };
-        if (GetMonitorInfo(MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), ref monitorInfo))
-            work = new Rect(monitorInfo.rcWork.Left, monitorInfo.rcWork.Top,
-                monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
-        _menu.ShowAt(new Point(pt.X, pt.Y), work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText, ProfileNames?.Invoke() ?? Array.Empty<string>());
+        var (cursor, work) = MonitorArea.AtCursor();
+        _menu.ShowAt(cursor, work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText, ProfileNames?.Invoke() ?? Array.Empty<string>());
     }
 
     // --- Mouse wheel over the icon -------------------------------------------------------------
@@ -374,23 +370,6 @@ public sealed class TrayIcon : IDisposable
     private const uint NIM_ADD = 0, NIM_MODIFY = 1, NIM_DELETE = 2;
     private const uint NIF_MESSAGE = 0x1, NIF_ICON = 0x2, NIF_TIP = 0x4, NIF_INFO = 0x10;
     private const uint NIIF_INFO = 0x1;
-    private const uint MONITOR_DEFAULTTONEAREST = 2;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MONITORINFO
-    {
-        public uint cbSize;
-        public RECT rcMonitor;
-        public RECT rcWork;
-        public uint dwFlags;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
     private const uint RIDEV_REMOVE = 0x1, RIDEV_INPUTSINK = 0x100;
     private const uint RID_INPUT = 0x10000003;
     private const int RIM_TYPEMOUSE = 0;

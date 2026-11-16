@@ -83,6 +83,7 @@ public partial class FlyoutWindow : Window
         // A tray click right after deactivation-hide should not immediately reopen it.
         if ((DateTime.UtcNow - _hiddenAt).TotalMilliseconds < 500) return;
         Refresh();
+        (_cursor, _work) = MonitorArea.AtCursor(); // the monitor of the tray icon (the cursor is on it after a click)
         Show();
         StartNowPlaying();
         Reposition();
@@ -135,11 +136,16 @@ public partial class FlyoutWindow : Window
         Hide();
     }
 
+    private Point _cursor;
+    private Rect _work = Rect.Empty;
+
     private void Reposition()
     {
-        var area = SystemParameters.WorkArea;
-        Left = area.Right - ActualWidth - 12;
-        Top = area.Bottom - ActualHeight - 12;
+        if (_work.IsEmpty) { var wa = SystemParameters.WorkArea; _work = wa; _cursor = new Point(wa.Left + wa.Width / 2, wa.Top + wa.Height / 2); }
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+        var at = PopupPlacement.Place(_cursor, _work, new Size(ActualWidth, ActualHeight), dpi.DpiScaleX, dpi.DpiScaleY, 12, cornerWhenInside: true);
+        Left = at.X;
+        Top = at.Y;
     }
 
     /// <summary>Diff live devices into the collection: add new, remove gone, sync existing.</summary>

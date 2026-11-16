@@ -88,22 +88,9 @@ public partial class TrayMenuWindow : Window
         content.Measure(new Size(Width, double.PositiveInfinity));
         var size = new Size(Width, content.DesiredSize.Height);
         var scale = VisualTreeHelper.GetDpi(this);
-        Point P(Point px) => new(px.X / scale.DpiScaleX, px.Y / scale.DpiScaleY);
-        var c = P(cursor);
-        var area = new Rect(P(workArea.TopLeft), P(workArea.BottomRight));
-
-        double left, top;
-        if (cursor.X >= workArea.Right) { left = area.Right - size.Width - Gap; top = c.Y - size.Height / 2; }   // taskbar on the right
-        else if (cursor.X < workArea.Left) { left = area.Left + Gap; top = c.Y - size.Height / 2; }              // taskbar on the left
-        else
-        {
-            left = c.X - size.Width / 2;
-            if (cursor.Y >= workArea.Bottom) top = area.Bottom - size.Height - Gap;                              // taskbar at the bottom
-            else if (cursor.Y < workArea.Top) top = area.Top + Gap;                                              // taskbar at the top
-            else top = c.Y - size.Height - Gap;                                                                  // overflow flyout: just above the cursor
-        }
-        Left = Math.Clamp(left, area.Left + Gap, Math.Max(area.Left + Gap, area.Right - size.Width - Gap));
-        Top = Math.Clamp(top, area.Top + Gap, Math.Max(area.Top + Gap, area.Bottom - size.Height - Gap));
+        var at = PopupPlacement.Place(cursor, workArea, size, scale.DpiScaleX, scale.DpiScaleY, Gap, cornerWhenInside: false);
+        Left = at.X;
+        Top = at.Y;
 
         Show();
         Activate();
