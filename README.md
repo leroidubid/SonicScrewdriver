@@ -230,6 +230,24 @@ documented, ordinary API that many programs use and is much less intrusive than 
 registration that stays active in competitive mode. If you want nothing at all, leave the shortcut empty (the default)
 and use the tray menu, or quit the app.
 
+**Tested games.** Checked means tried by the author with no problem; unchecked means not tested yet. A tick says
+nothing about a future anti-cheat update, and a game that is not listed is simply untested.
+
+- [x] Rocket League (EasyAntiCheat)
+- [ ] Valorant (Vanguard, kernel driver)
+- [ ] Counter-Strike 2 through FACEIT (FACEIT Anti-Cheat, kernel driver)
+- [ ] Call of Duty: Warzone (Ricochet, kernel driver)
+- [ ] Fortnite (EasyAntiCheat and BattlEye)
+- [ ] Apex Legends (EasyAntiCheat)
+- [ ] Rainbow Six Siege (BattlEye)
+- [ ] PUBG (BattlEye)
+- [ ] Destiny 2 (BattlEye)
+- [ ] Rust (EasyAntiCheat)
+
+Tried a game that is not on the list, or hit a problem? Please
+[open an issue](https://github.com/leroidubid/SonicScrewdriver/issues) with the game, the anti-cheat message and
+whether Competitive mode was on.
+
 ## Security
 
 - The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default);
