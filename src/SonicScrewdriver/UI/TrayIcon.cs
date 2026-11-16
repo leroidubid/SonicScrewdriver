@@ -122,7 +122,8 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Refreshes the tooltip (the default device can change at any time); no-op when unchanged.</summary>
     private void UpdateTip()
     {
-        var tip = Bindings.ShortcutSummary.Tooltip(DefaultDeviceName?.Invoke(), ActiveLines);
+        // Competitive mode: no audio enumeration on every hover, the tip is just the mode line.
+        var tip = _competitive ? CompetitiveLine : Bindings.ShortcutSummary.Tooltip(DefaultDeviceName?.Invoke(), ActiveLines);
         if (tip == _tip) return;
         _tip = tip;
         var data = NewData(NIF_TIP);
