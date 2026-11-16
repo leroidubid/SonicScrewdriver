@@ -24,8 +24,10 @@ internal sealed class FakeAudio : IAudioSessionService
     public IReadOnlyList<AudioDevice> GetDevices() => DeviceList ?? new List<AudioDevice> { new("dev", "Speakers", true, MasterVolume, MasterMuted, GetApps()) };
     public bool SetDefaultDevice(string deviceId) { DefaultCalls.Add(deviceId); return true; }
     public IReadOnlyList<int> GetProcessIds(string exe) => Apps.ContainsKey(exe) ? new[] { 1 } : Array.Empty<int>();
+    public List<(string Exe, bool Muted, string? Device)> MuteCalls { get; } = new();
     public bool SetMute(string exe, bool muted, string? deviceId = null)
     {
+        MuteCalls.Add((exe, muted, deviceId));
         if (!Apps.TryGetValue(exe, out var a)) return false;
         Apps[exe] = (a.Vol, muted);
         return true;

@@ -7,7 +7,7 @@ namespace SonicScrewdriver.Audio;
 public sealed class MuteAll
 {
     private readonly IAudioSessionService _audio;
-    private Dictionary<string, bool>? _saved;
+    private Dictionary<(string Device, string Exe), bool>? _saved;
 
     public MuteAll(IAudioSessionService audio) => _audio = audio;
 
@@ -28,13 +28,15 @@ public sealed class MuteAll
             Restore();
             return false;
         }
-        var saved = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        foreach (var app in _audio.GetApps())
-        {
-            if (Excluded.Contains(app.ExeName, StringComparer.OrdinalIgnoreCase)) continue;
-            saved[app.ExeName] = app.Muted;
-            if (!app.Muted) _audio.SetMute(app.ExeName, true);
-        }
+        // Per device: an app with sessions on two outputs keeps the mute state each one had.
+        var saved = new Dictionary<(string, string), bool>(new DeviceExeComparer());
+        foreach (var device in _audio.GetDevices())
+            foreach (var app in device.Apps)
+            {
+                if (Excluded.Contains(app.ExeName, StringComparer.OrdinalIgnoreCase)) continue;
+                saved[(device.Id, app.ExeName)] = app.Muted;
+                if (!app.Muted) _audio.SetMute(app.ExeName, true, device.Id);
+            }
         if (saved.Count == 0) return null;
         _saved = saved;
         return true;
@@ -46,7 +48,14 @@ public sealed class MuteAll
         if (_saved is null) return;
         var saved = _saved;
         _saved = null;
-        foreach (var (exe, wasMuted) in saved)
-            if (!wasMuted) _audio.SetMute(exe, false);
+        foreach (var ((device, exe), wasMuted) in saved)
+            if (!wasMuted) _audio.SetMute(exe, false, device);
+    }
+
+    private sealed class DeviceExeComparer : IEqualityComparer<(string Device, string Exe)>
+    {
+        public bool Equals((string Device, string Exe) a, (string Device, string Exe) b) =>
+            a.Device == b.Device && string.Equals(a.Exe, b.Exe, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string Device, string Exe) k) => HashCode.Combine(k.Device, StringComparer.OrdinalIgnoreCase.GetHashCode(k.Exe));
     }
 }
