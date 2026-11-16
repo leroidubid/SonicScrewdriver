@@ -184,6 +184,19 @@ click **More info**, then **Run anyway**.
 The default shortcut is `Ctrl + media keys` on the foreground app. Settings are stored in
 `%APPDATA%\SonicScrewdriver\settings.json`.
 
+## Tested on
+
+Checked means tried by the author; unchecked means not tested yet. The installer asks for Windows 10 version 1809
+or later and the app is built for 64-bit Windows.
+
+- [x] Windows 10 22H2 (build 19045)
+- [ ] Windows 11
+- [ ] Windows 10, older versions (1809 to 21H2)
+- [ ] Windows 11 on ARM (runs through x64 emulation)
+
+The default device change and the per-app output use undocumented Windows interfaces, so a new Windows build can
+break them: please [open an issue](https://github.com/leroidubid/SonicScrewdriver/issues) with your Windows version.
+
 ## Limitations
 
 - **Media control:** Play/Pause, Next and Previous only reach apps that register with Windows media
