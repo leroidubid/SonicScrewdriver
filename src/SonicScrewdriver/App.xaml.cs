@@ -42,6 +42,7 @@ public partial class App : Application
     private readonly System.Windows.Threading.DispatcherTimer _streamTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly System.Windows.Threading.DispatcherTimer _duckTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private MicrophoneService? _mic;
+    private readonly MicMuteGuard _micGuard = new();
     private readonly DevicePriorityPolicy _devicePriority = new();
     private readonly System.Windows.Threading.DispatcherTimer _priorityTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private RoutingApplier _routing = null!;
@@ -303,6 +304,13 @@ public partial class App : Application
         var wanted = !_settings.CompetitiveMode && (!string.IsNullOrWhiteSpace(_settings.MicMuteHotkey) || _settings.MicrophoneInMixer);
         if (!wanted)
         {
+            // Entering competitive mode: a microphone muted by the shortcut would stay muted with no icon and no shortcut.
+            if (_settings.CompetitiveMode && _micGuard.MutedByApp)
+            {
+                var temporary = _mic is null ? new MicrophoneService() : null;
+                try { _micGuard.ReleaseIfMutedByApp((IMicrophone?)_mic ?? temporary!); }
+                finally { temporary?.Dispose(); }
+            }
             if (_mic is not null) { _mic.Changed -= OnMicChanged; _mic.Dispose(); _mic = null; }
             _tray?.SetMicMuted(false);
             return;
@@ -329,7 +337,7 @@ public partial class App : Application
         var temporary = _mic is null ? new MicrophoneService() : null;
         try
         {
-            var muted = MicrophoneToggle.Toggle((IMicrophone?)_mic ?? temporary!);
+            var muted = MicrophoneToggle.Toggle(_micGuard.Wrap((IMicrophone?)_mic ?? temporary!));
             if (muted is null) return false;
             _osd.Show(null, (_mic ?? temporary)!.Name, muted.Value ? "Microphone muted" : "Microphone unmuted");
             _tray?.SetMicMuted(_mic is not null && muted.Value);
@@ -548,7 +556,7 @@ public partial class App : Application
         if (_flyout is null)
         {
             _flyout = new FlyoutWindow(_audio, () => _settings, () => { TrySave(); }, _media,
-                () => _settings.MicrophoneInMixer && !_settings.CompetitiveMode ? _mic : null);
+                () => _settings.MicrophoneInMixer && !_settings.CompetitiveMode && _mic is not null ? _micGuard.Wrap(_mic) : null);
             _flyout.IsVisibleChanged += (_, e) =>
             {
                 if (e.NewValue is false)
