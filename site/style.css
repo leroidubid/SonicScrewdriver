@@ -10,7 +10,7 @@
   --accent: #0a84ff;
   --accent-text: #5aaeff;
   --button: #0a6fe0;
-  --button-hover: #1a7ff0;
+  --button-hover: #0859b5;
   --green: #3ddc84;
   --code-bg: #141416;
   --shadow: 0 8px 30px rgba(0, 0, 0, .45);
@@ -91,7 +91,7 @@ th { background: var(--panel-2); }
 .button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; background: var(--button); color: #fff;
   font-weight: 700; font-size: 1.1rem; padding: .8rem 1.5rem; border-radius: 10px; text-decoration: none; border: 2px solid transparent; }
 .button:hover { background: var(--button-hover); }
-.button .ver { font-weight: 400; font-size: .8rem; opacity: .9; }
+.button .ver { font-weight: 400; font-size: .8rem; }
 .button.secondary { background: transparent; color: var(--fg); border-color: var(--border); }
 .button.secondary:hover { background: var(--panel-2); }
 .hero-shots { display: flex; flex-wrap: wrap; gap: 1.25rem; justify-content: center; align-items: flex-start; }
