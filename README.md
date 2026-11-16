@@ -184,6 +184,19 @@ click **More info**, then **Run anyway**.
 The default shortcut is `Ctrl + media keys` on the foreground app. Settings are stored in
 `%APPDATA%\SonicScrewdriver\settings.json`.
 
+## Tested on
+
+Checked means tried by the author; unchecked means not tested yet. The installer asks for Windows 10 version 1809
+or later and the app is built for 64-bit Windows.
+
+- [x] Windows 10 22H2 (build 19045)
+- [ ] Windows 11
+- [ ] Windows 10, older versions (1809 to 21H2)
+- [ ] Windows 11 on ARM (runs through x64 emulation)
+
+The default device change and the per-app output use undocumented Windows interfaces, so a new Windows build can
+break them: please [open an issue](https://github.com/leroidubid/SonicScrewdriver/issues) with your Windows version.
+
 ## Limitations
 
 - **Media control:** Play/Pause, Next and Previous only reach apps that register with Windows media
@@ -229,6 +242,24 @@ itself matches the combination and tells the app. The app never sees any other k
 documented, ordinary API that many programs use and is much less intrusive than a hook, but it is still one
 registration that stays active in competitive mode. If you want nothing at all, leave the shortcut empty (the default)
 and use the tray menu, or quit the app.
+
+**Tested games.** Checked means tried by the author with no problem; unchecked means not tested yet. A tick says
+nothing about a future anti-cheat update, and a game that is not listed is simply untested.
+
+- [x] Rocket League (EasyAntiCheat)
+- [ ] Valorant (Vanguard, kernel driver)
+- [ ] Counter-Strike 2 through FACEIT (FACEIT Anti-Cheat, kernel driver)
+- [ ] Call of Duty: Warzone (Ricochet, kernel driver)
+- [ ] Fortnite (EasyAntiCheat and BattlEye)
+- [ ] Apex Legends (EasyAntiCheat)
+- [ ] Rainbow Six Siege (BattlEye)
+- [ ] PUBG (BattlEye)
+- [ ] Destiny 2 (BattlEye)
+- [ ] Rust (EasyAntiCheat)
+
+Tried a game that is not on the list, or hit a problem? Please
+[open an issue](https://github.com/leroidubid/SonicScrewdriver/issues) with the game, the anti-cheat message and
+whether Competitive mode was on.
 
 ## Security
 
