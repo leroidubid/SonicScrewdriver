@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Competitive mode:** automatic ducking, streamer mode, maximum volumes, remembered routing, the output priority list and
+  the profile retry can no longer act after the mode is switched on (a callback queued just before the switch used to
+  restart them, and ducked apps stayed lowered).
+- **Exit:** quitting with "Mute everything", ducking or streamer mode active restores every app to what it was; one
+  failing step no longer skips the others.
+- **Ducking and streamer mode:** a level you set by hand while an app is lowered is kept; an app that quit is dropped; a
+  failed restore is retried.
+- **Mute everything:** an app with sessions on several outputs gets back the mute state each output had.
+- **Audio devices:** no COM leak when a device tracker fails to build, and a tracker is rebuilt after a quick unplug and
+  replug. The tray no longer reads the devices on every mouse move in competitive mode. A late old keyboard-hook thread
+  can no longer unhook a newer one.
+
 ## [1.1.0] - 2026-11-16
 
 ### Added
