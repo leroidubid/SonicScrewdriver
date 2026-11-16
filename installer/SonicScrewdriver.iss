@@ -82,14 +82,43 @@ Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchApp}"; Flags: nowait postin
 const
   DotNetUrl = 'https://dotnet.microsoft.com/download/dotnet/8.0';
 
-{ True when a .NET 8 Desktop Runtime (x64) is installed. }
-function HasDesktopRuntime8(): Boolean;
+{ A .NET 8 Desktop Runtime inside the given dotnet folder (the one with shared\Microsoft.WindowsDesktop.App). }
+function HasRuntimeIn(DotNetDir: String): Boolean;
 var
   FindRec: TFindRec;
 begin
-  Result := FindFirst(ExpandConstant('{commonpf64}\dotnet\shared\Microsoft.WindowsDesktop.App\8.*'), FindRec);
+  Result := False;
+  if DotNetDir = '' then Exit;
+  Result := FindFirst(AddBackslash(DotNetDir) + 'shared\Microsoft.WindowsDesktop.App\8.*', FindRec);
   if Result then
     FindClose(FindRec);
+end;
+
+{ The x64 runtime registers each installed version in the 64-bit registry, wherever it was installed. }
+function HasRuntimeInRegistry(): Boolean;
+var
+  Names: TArrayOfString;
+  I: Integer;
+begin
+  Result := False;
+  if RegGetValueNames(HKLM64, 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App', Names) then
+    for I := 0 to GetArrayLength(Names) - 1 do
+      if Copy(Names[I], 1, 2) = '8.' then
+      begin
+        Result := True;
+        Exit;
+      end;
+end;
+
+{ True when a .NET 8 Desktop Runtime (x64) is installed: registry, Program Files (also the x64 folder of Windows on Arm),
+  a per-user install (dotnet-install) or the folder DOTNET_ROOT points to. }
+function HasDesktopRuntime8(): Boolean;
+begin
+  Result := HasRuntimeInRegistry()
+    or HasRuntimeIn(ExpandConstant('{commonpf64}\dotnet'))
+    or HasRuntimeIn(ExpandConstant('{commonpf64}\dotnet\x64'))
+    or HasRuntimeIn(ExpandConstant('{localappdata}\Microsoft\dotnet'))
+    or HasRuntimeIn(GetEnv('DOTNET_ROOT'));
 end;
 
 function InitializeSetup(): Boolean;
