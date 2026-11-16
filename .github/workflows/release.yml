@@ -86,6 +86,7 @@ jobs:
             gh release upload "$GITHUB_REF_NAME" "${FILES[@]}" --clobber
           else
             awk -v v="$BASE" '$0 ~ "^## \\[" v "\\]" {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > notes.md
+            [ -s notes.md ] || awk '$0 ~ "^## \\[Unreleased\\]" {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > notes.md
             [ -s notes.md ] || echo "See CHANGELOG.md" > notes.md
             gh release create "$GITHUB_REF_NAME" "${FILES[@]}" --title "Sonic Screwdriver ${VERSION}" --notes-file notes.md $PRE
           fi
