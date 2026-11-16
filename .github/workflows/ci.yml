@@ -22,7 +22,7 @@ jobs:
           code=true
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             files=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}")
-            if [ -n "$files" ] && ! echo "$files" | grep -qvE '^(README\.md|CHANGELOG\.md|CONTRIBUTING\.md|LICENSE|docs/.*)$'; then
+            if [ -n "$files" ] && ! echo "$files" | grep -qvE '^(README\.md|CHANGELOG\.md|CONTRIBUTING\.md|LICENSE|docs/.*|site/.*|tools/check-site\.py)$'; then
               code=false
               echo "Documentation only: build and tests skipped." >> "$GITHUB_STEP_SUMMARY"
             fi

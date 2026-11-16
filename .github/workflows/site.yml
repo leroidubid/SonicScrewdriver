@@ -1,0 +1,61 @@
+name: Site
+
+# Publishes site/ with GitHub Pages: https://leroidubid.github.io/SonicScrewdriver/
+#
+# ONE-TIME SETUP (done by the repository owner, the workflow cannot do it):
+#   1. On GitHub open the repository > Settings > Pages.
+#   2. Under "Build and deployment", set Source to "GitHub Actions". Nothing else to configure.
+#   3. Merge the pull request that adds this file (or run Actions > Site > Run workflow on main).
+#      The first deployment creates the "github-pages" environment if it does not exist yet.
+#   4. If the environment restricts branches (Settings > Environments > github-pages), allow "main".
+# A custom domain, if one is added later, is set in Settings > Pages (and then site/404.html needs its <base> removed).
+#
+# Pull requests that touch site/ only run the checker (read-only, no deploy).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/site.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'tools/check-site.py'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check links, anchors, images and page basics
+        run: python3 tools/check-site.py
+
+  deploy:
+    # Never on a pull request: only the checker above runs there.
+    if: github.event_name != 'pull_request'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One deployment at a time; a newer push waits instead of cancelling a deployment in progress.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

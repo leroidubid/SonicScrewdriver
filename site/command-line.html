@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Command line - Sonic Screwdriver</title>
+  <meta name="description" content="Control Sonic Screwdriver from a script, Stream Deck, Touch Portal or AutoHotkey: set a volume, mute an app, apply a profile. Commands and exit codes.">
+  <meta name="theme-color" content="#1b1b1d">
+  <link rel="icon" href="img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sonic Screwdriver">
+  <meta property="og:title" content="Command line - Sonic Screwdriver">
+  <meta property="og:description" content="Control Sonic Screwdriver from a script, Stream Deck, Touch Portal or AutoHotkey: set a volume, mute an app, apply a profile. Commands and exit codes.">
+  <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/command-line.html">
+  <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap bar">
+      <a class="brand" href="index.html"><img src="img/icon-64.png" width="36" height="36" alt="">Sonic Screwdriver</a>
+      <nav aria-label="Main">
+      <ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="command-line.html" aria-current="page">Command line</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="https://github.com/leroidubid/SonicScrewdriver">GitHub</a></li>
+      </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap prose">
+    <h1>Command line</h1>
+    <!-- keep in sync with README -->
+    <p>A second launch of <code>SonicScrewdriver.exe</code> with a command hands it to the running instance (through a hidden window of the running app: no new background service) and exits with a code. The app must already be running; a command never starts it.</p>
+
+    <h2 id="commands">Commands</h2>
+    <!-- keep in sync with README -->
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Table 1 of this page, scrolls sideways on a narrow screen"><table>
+      <thead>
+        <tr><th>Command</th><th>Does</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>--set &lt;app&gt; &lt;0-100&gt;</code></td><td>Sets the app's volume (the maximum volume of the app still applies) and unmutes it when above 0</td></tr>
+        <tr><td><code>--mute &lt;app&gt;</code> / <code>--unmute &lt;app&gt;</code> / <code>--toggle-mute &lt;app&gt;</code></td><td>Mutes, unmutes or toggles the app</td></tr>
+        <tr><td><code>--profile "&lt;name&gt;"</code></td><td>Applies a volume profile</td></tr>
+        <tr><td><code>--mute-all</code></td><td>Mutes every app, or restores them (same as the shortcut)</td></tr>
+        <tr><td><code>--mic-mute</code></td><td>Mutes or unmutes the default microphone</td></tr>
+        <tr><td><code>--toggle-competitive</code></td><td>Switches competitive mode</td></tr>
+      </tbody>
+    </table></div>
+    <!-- keep in sync with README -->
+    <p><code>&lt;app&gt;</code> is the exe name, with or without <code>.exe</code> (<code>spotify</code> and <code>spotify.exe</code> are the same). Examples:</p>
+<pre><code>SonicScrewdriver.exe --set spotify.exe 30
+SonicScrewdriver.exe --mute discord
+SonicScrewdriver.exe --profile "Game night"</code></pre>
+
+    <h2 id="exit-codes">Exit codes</h2>
+    <!-- keep in sync with README -->
+    <div class="table-wrap" role="region" tabindex="0" aria-label="Table 2 of this page, scrolls sideways on a narrow screen"><table>
+      <thead>
+        <tr><th>Code</th><th>Meaning</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>0</code></td><td>Done</td></tr>
+        <tr><td><code>1</code></td><td>Unknown command or bad arguments</td></tr>
+        <tr><td><code>2</code></td><td>Sonic Screwdriver is not running</td></tr>
+        <tr><td><code>3</code></td><td>The app (or the profile, or the microphone) was not found (an app is found only while it plays sound)</td></tr>
+        <tr><td><code>4</code></td><td>Refused because competitive mode is on (only <code>--toggle-competitive</code> works then, like the shortcuts)</td></tr>
+        <tr><td><code>5</code></td><td>No answer</td></tr>
+      </tbody>
+    </table></div>
+    <p>A short message is printed on the console that started the command (nothing is shown when started from a shortcut or a launcher).</p>
+
+    <h2 id="launchers">Stream Deck, Touch Portal, AutoHotkey</h2>
+    <!-- keep in sync with README -->
+    <ul>
+      <li><strong>Stream Deck:</strong> use an action that runs a program (for example <em>System &gt; Open</em>, or a plugin that runs a command line) with the full command, such as <code>"C:\Path\SonicScrewdriver.exe" --profile "Game night"</code>.</li>
+      <li><strong>Touch Portal:</strong> use its action that runs an application, with the same path and arguments.</li>
+      <li><strong>AutoHotkey:</strong> <code>Run '"C:\Path\SonicScrewdriver.exe" --set spotify.exe 30'</code>, or <code>RunWait</code> to read the exit code.</li>
+    </ul>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p><a href="https://github.com/leroidubid/SonicScrewdriver">Source code on GitHub</a> &middot;
+      <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/LICENSE">License: MIT + Commons Clause</a>
+      (source-available, free to use and share, not to sell) &middot;
+      <a href="changelog.html">Changelog</a> &middot; <a href="games.html">Games</a></p>
+      <p>Not affiliated with or endorsed by the BBC.</p>
+    </div>
+  </footer>
+</body>
+</html>
