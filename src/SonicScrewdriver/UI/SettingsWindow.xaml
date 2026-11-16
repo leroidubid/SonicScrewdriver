@@ -94,6 +94,17 @@
 
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
+                            <TextBlock Text="Free shortcuts" Style="{StaticResource CardTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,12"
+                                       Text="A shortcut on any key combination, not only on media keys: click the box, press the combination (at least one of Ctrl, Alt, Shift or Win, plus a key), then choose what it does and to which app. Windows itself matches the combination (no keyboard hook), so its keys are taken from other programs while Sonic Screwdriver runs. A combination already used by Windows or another program is refused. Off in competitive mode."/>
+                            <StackPanel x:Name="FreePanel"/>
+                            <Button HorizontalAlignment="Left" Content="+ Add free shortcut" Style="{StaticResource FlatButton}" Click="AddFree_Click"/>
+                            <TextBlock x:Name="FreeError" Style="{StaticResource ErrorText}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
                             <TextBlock Text="Output devices in the cycle" Style="{StaticResource CardTitle}"/>
                             <TextBlock Style="{StaticResource Hint}"
                                        Text="With an &quot;Output device&quot; shortcut, Vol+ / Vol− switch the default output through the ticked devices."/>
@@ -117,6 +128,28 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Hidden apps" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Apps hidden from the mixer (right-click an app there). They keep working with shortcuts and their volume is not touched."/>
+                        <TextBlock x:Name="HiddenEmpty" Style="{StaticResource Hint}" Text="No hidden app." Margin="0,8,0,0"/>
+                        <ItemsControl x:Name="HiddenList" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource RowBrush}" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Show again" Style="{StaticResource FlatButton}" Padding="14,6"
+                                                    Click="ShowAgain_Click" Tag="{Binding}"/>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
 
                 <Border Style="{StaticResource Card}">
                     <StackPanel>

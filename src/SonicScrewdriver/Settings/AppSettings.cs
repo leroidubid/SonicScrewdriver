@@ -29,6 +29,15 @@ public sealed class AppSettings
     /// <summary>Physical keys that act as media keys (one key per action), for keyboards without them.</summary>
     public List<KeyRemap> KeyRemaps { get; set; } = new();
 
+    /// <summary>Shortcuts on any key combination (not only media keys), registered with RegisterHotKey. Off in competitive mode.</summary>
+    public List<FreeHotkey> FreeHotkeys { get; set; } = new();
+
+    /// <summary>Exe names pinned to the top of each device list in the mixer, in pin order.</summary>
+    public List<string> PinnedApps { get; set; } = new();
+
+    /// <summary>Exe names not listed in the mixer (they keep working with shortcuts; their volume is not touched).</summary>
+    public List<string> HiddenApps { get; set; } = new();
+
     /// <summary>Output devices included in the cycle (MMDevice IDs); empty means every active device.</summary>
     public List<string> CycleDeviceIds { get; set; } = new();
 
@@ -73,6 +82,35 @@ public sealed class AppSettings
         }
         if (!string.IsNullOrWhiteSpace(CompetitiveHotkey) && !Hotkey.TryParse(CompetitiveHotkey, out _))
             errors.Add("Competitive mode shortcut: use at least one modifier plus a key, e.g. Ctrl+Alt+F9.");
+        var chords = new HashSet<Hotkey>();
+        if (Hotkey.TryParse(CompetitiveHotkey, out var modeChord)) chords.Add(modeChord);
+        for (var i = 0; i < FreeHotkeys.Count; i++)
+        {
+            var f = FreeHotkeys[i];
+            var label = $"Free shortcut {i + 1}";
+            if (f.Target is null || (f.Target.Kind == TargetKind.Process && string.IsNullOrWhiteSpace(f.Target.ExeName)))
+                errors.Add($"{label}: enter a target application.");
+            if (f.StepPercent is < 1 or > 50)
+                errors.Add($"{label}: step must be between 1 and 50 %.");
+            if (!Enum.IsDefined(f.Action)) errors.Add($"{label}: choose an action.");
+            if (!f.TryGetHotkey(out var chord))
+                errors.Add($"{label}: record a key combination (at least one of Ctrl, Alt, Shift or Win, plus a key).");
+            else if (!chords.Add(chord))
+                errors.Add($"{label}: {chord} is already used by another shortcut.");
+        }
         return errors;
+    }
+
+    /// <summary>"Spotify" / " SPOTIFY.EXE " → "spotify.exe", no empty entries, no duplicates; order kept.</summary>
+    public static List<string> SanitizeExeList(IEnumerable<string>? exes)
+    {
+        var seen = new HashSet<string>();
+        var result = new List<string>();
+        foreach (var e in exes ?? Array.Empty<string>())
+        {
+            var exe = Target.NormalizeExe(e ?? "");
+            if (exe.Length > 0 && seen.Add(exe)) result.Add(exe);
+        }
+        return result;
     }
 }

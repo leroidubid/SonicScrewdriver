@@ -57,14 +57,23 @@ public sealed class BindingRowViewModel : ObservableObject
         if (Shift) m |= Modifiers.Shift;
         if (Alt) m |= Modifiers.Alt;
         if (Win) m |= Modifiers.Win;
-        var t = TargetText.Trim();
-        Target target;
-        if (string.Equals(t, ForegroundLabel, StringComparison.OrdinalIgnoreCase)) target = Target.Foreground;
-        else if (string.Equals(t, OutputDeviceLabel, StringComparison.OrdinalIgnoreCase)) target = Target.OutputDevice;
-        else
-        {
-            target = Target.Process(ExeFromLabel(t));
-        }
-        return new KeyBinding(m, target, StepPercent);
+        return new KeyBinding(m, ParseTarget(TargetText), StepPercent);
     }
+
+    /// <summary>"Foreground app", "Output device" or an app label / exe name, as typed in a target box.</summary>
+    public static Target ParseTarget(string text)
+    {
+        var t = text.Trim();
+        if (string.Equals(t, ForegroundLabel, StringComparison.OrdinalIgnoreCase)) return Target.Foreground;
+        if (string.Equals(t, OutputDeviceLabel, StringComparison.OrdinalIgnoreCase)) return Target.OutputDevice;
+        return Target.Process(ExeFromLabel(t));
+    }
+
+    /// <summary>Text shown in a target box for a target.</summary>
+    public static string TargetLabel(Target t) => t.Kind switch
+    {
+        TargetKind.Foreground => ForegroundLabel,
+        TargetKind.OutputDevice => OutputDeviceLabel,
+        _ => t.ExeName ?? "",
+    };
 }

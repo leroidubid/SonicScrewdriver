@@ -28,13 +28,19 @@ public sealed class GlobalHotkey : IDisposable
         if (_registered) UnregisterHotKey(_window.Handle, Id);
         _registered = false;
         if (hotkey is not { } h) return true;
-        var mods = MOD_NOREPEAT;
-        if (h.Modifiers.HasFlag(Modifiers.Alt)) mods |= MOD_ALT;
-        if (h.Modifiers.HasFlag(Modifiers.Ctrl)) mods |= MOD_CONTROL;
-        if (h.Modifiers.HasFlag(Modifiers.Shift)) mods |= MOD_SHIFT;
-        if (h.Modifiers.HasFlag(Modifiers.Win)) mods |= MOD_WIN;
-        _registered = RegisterHotKey(_window.Handle, Id, mods, (uint)h.VirtualKey);
+        _registered = RegisterHotKey(_window.Handle, Id, ToNative(h.Modifiers), (uint)h.VirtualKey);
         return _registered;
+    }
+
+    /// <summary>RegisterHotKey modifier flags (with MOD_NOREPEAT: holding the chord fires once).</summary>
+    internal static uint ToNative(Modifiers modifiers)
+    {
+        var mods = MOD_NOREPEAT;
+        if (modifiers.HasFlag(Modifiers.Alt)) mods |= MOD_ALT;
+        if (modifiers.HasFlag(Modifiers.Ctrl)) mods |= MOD_CONTROL;
+        if (modifiers.HasFlag(Modifiers.Shift)) mods |= MOD_SHIFT;
+        if (modifiers.HasFlag(Modifiers.Win)) mods |= MOD_WIN;
+        return mods;
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -55,9 +61,9 @@ public sealed class GlobalHotkey : IDisposable
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint vk);
+    internal static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint vk);
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool UnregisterHotKey(IntPtr hwnd, int id);
+    internal static extern bool UnregisterHotKey(IntPtr hwnd, int id);
 }

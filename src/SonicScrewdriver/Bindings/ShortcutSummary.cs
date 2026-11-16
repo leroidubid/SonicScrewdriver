@@ -25,6 +25,11 @@ public static class ShortcutSummary
         return parts.Count == 0 ? Array.Empty<string>() : new[] { "Keys: " + string.Join(", ", parts) };
     }
 
+    /// <summary>One line per free hotkey: "Ctrl+Alt+F9 Vol+ → spotify.exe".</summary>
+    public static IReadOnlyList<string> FreeLines(IEnumerable<Settings.FreeHotkey> hotkeys) =>
+        hotkeys.Where(f => f.TryGetHotkey(out _))
+            .Select(f => $"{f.Chord} {Settings.FreeHotkey.ActionLabel(f.Action)} → {Format(f.Target)}").ToList();
+
     /// <summary>"Output: device" line, then one line per shortcut.</summary>
     public static string Tooltip(string? defaultDevice, IReadOnlyList<string> lines)
     {
