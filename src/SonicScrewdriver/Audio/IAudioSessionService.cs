@@ -15,6 +15,12 @@ public interface IAudioSessionService
     IReadOnlyList<AudioDevice> GetDevices();
     IReadOnlyList<int> GetProcessIds(string exe);
 
+    /// <summary>Maximum volume of some apps: every volume write goes through it.</summary>
+    VolumeLimits Limits { get; }
+
+    /// <summary>Highest current peak level (0..1) among the sessions of the exe; null when it has none. Used only by ducking.</summary>
+    float? GetPeak(string exe);
+
     float? GetVolume(string exe);
     bool SetVolume(string exe, float volume, string? deviceId = null);
     bool? GetMute(string exe);

@@ -19,6 +19,15 @@ public class AudioSessionServiceSmokeTests
     }
 
     [Fact]
+    public void Peak_meter_is_read_for_playing_apps_and_null_for_absent_ones()
+    {
+        using var svc = new AudioSessionService();
+        Assert.Null(svc.GetPeak("definitely-not-running.exe"));
+        foreach (var a in svc.GetApps())
+            Assert.InRange(svc.GetPeak(a.ExeName) ?? 0f, 0f, 1f);
+    }
+
+    [Fact]
     public void Foreground_lookup_does_not_throw()
         => _ = new ForegroundProcess().GetForegroundExe();
 }

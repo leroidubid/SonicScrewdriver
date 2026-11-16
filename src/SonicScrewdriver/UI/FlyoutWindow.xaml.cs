@@ -4,7 +4,9 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using SonicScrewdriver.Audio;
+using SonicScrewdriver.Input;
 using SonicScrewdriver.Interop;
+using SonicScrewdriver.Media;
 using SonicScrewdriver.Settings;
 
 namespace SonicScrewdriver.UI;
@@ -14,6 +16,11 @@ public partial class FlyoutWindow : Window
     private readonly IAudioSessionService _audio;
     private readonly Func<AppSettings> _settings;
     private readonly Action _save;
+    private readonly IMediaSessionService _media;
+    private readonly Func<IMicrophone?> _microphone;
+    private MicViewModel? _mic;
+    // Track changes come in bursts too: one now-playing read per 200 ms, and only while the mixer is open.
+    private readonly DispatcherTimer _nowPlayingDebounce = new() { Interval = TimeSpan.FromMilliseconds(200) };
     // Audio events come in bursts (one per session/channel): throttle them to one refresh per 60 ms.
     private readonly DispatcherTimer _refreshDebounce = new() { Interval = TimeSpan.FromMilliseconds(60) };
     private DateTime _hiddenAt = DateTime.MinValue;
@@ -21,8 +28,10 @@ public partial class FlyoutWindow : Window
 
     public ObservableCollection<DeviceViewModel> Devices { get; } = new();
 
-    public FlyoutWindow(IAudioSessionService audio, Func<AppSettings> settings, Action save)
+    public FlyoutWindow(IAudioSessionService audio, Func<AppSettings> settings, Action save, IMediaSessionService media, Func<IMicrophone?> microphone)
     {
+        _microphone = microphone;
+        _media = media;
         _audio = audio;
         _settings = settings;
         _save = save;
@@ -32,7 +41,13 @@ public partial class FlyoutWindow : Window
         _refreshDebounce.Tick += (_, _) => { _refreshDebounce.Stop(); Refresh(); };
         _audio.SessionsChanged += OnAudioChanged;
         _audio.VolumesChanged += OnAudioChanged;
-        IsVisibleChanged += (_, e) => _visible = (bool)e.NewValue;
+        _audio.SessionsChanged += (_, _) => { if (_visible) Dispatcher.BeginInvoke(() => _nowPlayingDebounce.Start()); };
+        _nowPlayingDebounce.Tick += async (_, _) => { _nowPlayingDebounce.Stop(); await UpdateNowPlayingAsync(); };
+        IsVisibleChanged += (_, e) =>
+        {
+            _visible = (bool)e.NewValue;
+            if (!_visible) { _nowPlayingDebounce.Stop(); _media.Watch(null); } // nothing is watched while the mixer is closed
+        };
         Deactivated += (_, _) => HideFlyout();
         SizeChanged += (_, _) => Reposition();
         AddHandler(System.Windows.Controls.Primitives.Thumb.DragStartedEvent,
@@ -51,6 +66,7 @@ public partial class FlyoutWindow : Window
         {
             case AppVolumeViewModel app: app.Dragging = on; break;
             case DeviceViewModel dev: dev.Dragging = on; break;
+            case MicViewModel mic: mic.Dragging = on; break;
         }
     }
 
@@ -68,9 +84,47 @@ public partial class FlyoutWindow : Window
         if ((DateTime.UtcNow - _hiddenAt).TotalMilliseconds < 500) return;
         Refresh();
         Show();
+        StartNowPlaying();
         Reposition();
         Activate();
         if (!IsActive) NativeMethods.SetForegroundWindow(new WindowInteropHelper(this).Handle);
+    }
+
+    /// <summary>"Show what is playing" is on and competitive mode is off.</summary>
+    private bool NowPlayingOn => _settings() is { NowPlayingInMixer: true, CompetitiveMode: false };
+
+    private void StartNowPlaying()
+    {
+        if (!NowPlayingOn) { ClearNowPlaying(); return; }
+        _media.Watch(() => Dispatcher.BeginInvoke(() => { if (_visible) _nowPlayingDebounce.Start(); }));
+        _ = UpdateNowPlayingAsync();
+    }
+
+    private void ClearNowPlaying()
+    {
+        foreach (var app in Devices.SelectMany(d => d.Apps)) app.SetNowPlaying(null);
+    }
+
+    /// <summary>Reads the title and artist of each listed app once (the playing media session of that app).</summary>
+    private async Task UpdateNowPlayingAsync()
+    {
+        if (!IsVisible) return;
+        if (!NowPlayingOn) { ClearNowPlaying(); return; }
+        var apps = Devices.SelectMany(d => d.Apps).ToList();
+        foreach (var group in apps.GroupBy(a => a.ExeName, StringComparer.OrdinalIgnoreCase))
+        {
+            var info = await _media.GetNowPlayingAsync(group.Key);
+            foreach (var app in group) app.SetNowPlaying(info);
+        }
+    }
+
+    private void Previous_Click(object sender, RoutedEventArgs e) => Transport(sender, MediaKey.Previous);
+    private void PlayPause_Click(object sender, RoutedEventArgs e) => Transport(sender, MediaKey.PlayPause);
+    private void Next_Click(object sender, RoutedEventArgs e) => Transport(sender, MediaKey.Next);
+
+    private void Transport(object sender, MediaKey key)
+    {
+        if (sender is FrameworkElement { Tag: AppVolumeViewModel app }) _ = _media.SendAsync(app.ExeName, key); // the media event refreshes the line
     }
 
     private void HideFlyout()
@@ -106,7 +160,29 @@ public partial class FlyoutWindow : Window
                 if (index != i && i < Devices.Count) Devices.Move(index, i); // default device first
             }
         }
+        RefreshMicrophone();
         EmptyText.Visibility = Devices.All(d => d.Apps.Count == 0) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The microphone section: shown only when the app hands over a microphone (feature on, competitive mode off, one plugged in).</summary>
+    private void RefreshMicrophone()
+    {
+        var mic = _microphone();
+        if (mic is not { Available: true })
+        {
+            _mic = null;
+            MicSection.Visibility = Visibility.Collapsed;
+            return;
+        }
+        if (_mic is null) { _mic = new MicViewModel(mic); MicSection.DataContext = _mic; }
+        else _mic.Sync();
+        MicSection.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>The microphone changed (from anywhere): refresh while the mixer is open. UI thread.</summary>
+    public void NotifyMicrophoneChanged()
+    {
+        if (_visible) _refreshDebounce.Start();
     }
 
     private int IndexOf(string id)

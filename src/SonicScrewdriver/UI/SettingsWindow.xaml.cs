@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using SonicScrewdriver.Audio;
 using SonicScrewdriver.Input;
 using SonicScrewdriver.Settings;
@@ -14,7 +15,7 @@ public partial class SettingsWindow : Window
     private readonly ObservableCollection<BindingRowViewModel> _rows;
     private readonly ObservableCollection<AutoProgramRowViewModel> _autoRows;
     private readonly List<(MediaKey Action, KeyCaptureBox Box)> _remapBoxes = new();
-    private readonly bool _initialCompetitive;
+    private bool _initialCompetitive; // the checkbox state at the last save (or at opening): "edited" is measured against it
     private readonly Func<Hotkey, bool>? _hotkeyAvailable;
     private readonly List<FreeRow> _freeRows = new();
     private readonly ObservableCollection<string> _hidden;
@@ -71,6 +72,7 @@ public partial class SettingsWindow : Window
         BuildRemapRows(current);
         foreach (var f in current.FreeHotkeys) AddFreeRow(f);
         ModeHotkeyBox.Validator = chord => FreeChordConflict(chord, null);
+        InitExtras(current, audio);
         _hidden = new ObservableCollection<string>(current.HiddenApps);
         _hidden.CollectionChanged += (_, _) => HiddenEmpty.Visibility = _hidden.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         HiddenList.ItemsSource = _hidden;
@@ -82,6 +84,35 @@ public partial class SettingsWindow : Window
         ModeHotkeyBox.Value = current.CompetitiveHotkey;
         ModeHotkeyBox.Rejected += message => HotkeyError.Text = message;
         ApplyCompetitiveState();
+        // Any edit marks the window as modified (Close becomes Cancel, the "Saved" note goes away). Text and selection
+        // changes only count while the keyboard focus is in the control: bindings that fill a tab when it is first shown do not.
+        AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent, new TextChangedEventHandler((_, e) => { if (e.OriginalSource is UIElement { IsKeyboardFocusWithin: true }) MarkDirty(); }));
+        AddHandler(System.Windows.Controls.Primitives.Selector.SelectionChangedEvent, new SelectionChangedEventHandler((_, e) => { if (e.OriginalSource is UIElement { IsKeyboardFocusWithin: true } and not TabControl) MarkDirty(); }));
+        AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler((_, e) =>
+        {
+            if (e.OriginalSource is Button b && (b == SaveButton || b == SaveExitButton || b == CancelButton)) return;
+            MarkDirty();
+        }));
+        _savedTimer.Tick += (_, _) => { _savedTimer.Stop(); SavedText.Visibility = Visibility.Collapsed; };
+        Closed += (_, _) => _savedTimer.Stop();
+    }
+
+    private readonly System.Windows.Threading.DispatcherTimer _savedTimer = new() { Interval = TimeSpan.FromSeconds(2.5) };
+
+    private void MarkDirty()
+    {
+        CancelButton.Content = "Cancel";
+        _savedTimer.Stop();
+        SavedText.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>After a save the window behaves as unmodified again: Cancel is Close, and "Saved" shows for a moment.</summary>
+    private void MarkSaved()
+    {
+        CancelButton.Content = "Close";
+        SavedText.Visibility = Visibility.Visible;
+        _savedTimer.Stop();
+        _savedTimer.Start();
     }
 
     /// <summary>Dark title bar to match the window (Windows 10 build 18985 and later, and Windows 11; ignored otherwise).</summary>
@@ -105,8 +136,89 @@ public partial class SettingsWindow : Window
     private void ApplyCompetitiveState()
     {
         var shortcutsOn = CompetitiveBox.IsChecked != true;
-        ShortcutsSection.IsEnabled = shortcutsOn;
-        ShortcutsSection.Opacity = shortcutsOn ? 1 : 0.4;
+        if (_dimmed is null) BuildCompetitiveMarks();
+        foreach (var part in _dimmed!) { part.IsEnabled = shortcutsOn; part.Opacity = shortcutsOn ? 1 : 0.4; }
+        foreach (var badge in _badges.Concat(_tabMarks)) badge.Visibility = shortcutsOn ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private List<FrameworkElement>? _dimmed;                       // what is greyed out in competitive mode
+    private readonly List<FrameworkElement> _badges = new();       // one "Competitive mode" label per card with greyed options
+    private readonly List<FrameworkElement> _tabMarks = new();     // the same label on the header of each tab that has such a card
+
+    /// <summary>
+    /// Finds the cards that hold greyed-out options and gives each a "Competitive mode" label (not greyed itself).
+    /// The shortcut cards are greyed as a whole (their content, so the label stays readable); the other cards only
+    /// have their listed parts greyed.
+    /// </summary>
+    private void BuildCompetitiveMarks()
+    {
+        _dimmed = new List<FrameworkElement>(_shortcutOnly);
+        var badgedCards = new List<Border>();
+        var cardStyle = (Style)FindResource("Card");
+        foreach (var card in LogicalDescendants(this).OfType<Border>().Where(b => b.Style == cardStyle).ToList())
+        {
+            var wholeCard = Inside(card, ShortcutsSection) || Equals(card.Tag, "Dim");
+            if (!wholeCard && !_shortcutOnly.Any(part => Inside(part, card))) continue;
+            var content = (FrameworkElement)card.Child;
+            card.Child = null;
+            var badge = new Border
+            {
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(9, 2, 9, 3),
+                BorderThickness = new Thickness(1),
+                BorderBrush = (Brush)FindResource("ErrorBrush"),
+                Visibility = Visibility.Collapsed,
+                ToolTip = "Competitive mode is on: the greyed options are switched off.",
+                Child = new TextBlock { Text = "Competitive mode", FontSize = 11, Foreground = (Brush)FindResource("ErrorBrush") },
+            };
+            var grid = new Grid();
+            grid.Children.Add(content);
+            grid.Children.Add(badge);
+            card.Child = grid;
+            _badges.Add(badge);
+            badgedCards.Add(card);
+            if (wholeCard) _dimmed.Add(content);
+        }
+        // Tab headers: the title, plus a small red label on tabs that hold greyed options. The logical tree is walked
+        // (tabs that were never shown are not in the visual tree).
+        foreach (var tab in Tabs.Items.OfType<TabItem>())
+        {
+            var title = new TextBlock { Text = tab.Header as string ?? "", VerticalAlignment = VerticalAlignment.Center, FontSize = 14, FontWeight = FontWeights.SemiBold };
+            title.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = tab });
+            var header = new StackPanel { Orientation = Orientation.Horizontal };
+            header.Children.Add(title);
+            if (badgedCards.Any(c => Inside(c, tab)))
+            {
+                var mark = new Border
+                {
+                    CornerRadius = new CornerRadius(8), Padding = new Thickness(6, 0, 6, 1), Margin = new Thickness(8, 1, 0, 0),
+                    BorderThickness = new Thickness(1), BorderBrush = (Brush)FindResource("ErrorBrush"), Visibility = Visibility.Collapsed,
+                    ToolTip = "Competitive mode is on: some options of this tab are switched off.",
+                    Child = new TextBlock { Text = "Competitive mode", FontSize = 10, FontWeight = FontWeights.Normal, Foreground = (Brush)FindResource("ErrorBrush") },
+                };
+                header.Children.Add(mark);
+                _tabMarks.Add(mark);
+            }
+            tab.Header = header;
+        }
+    }
+
+    private static IEnumerable<DependencyObject> LogicalDescendants(DependencyObject root)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            yield return child;
+            foreach (var d in LogicalDescendants(child)) yield return d;
+        }
+    }
+
+    private static bool Inside(DependencyObject element, DependencyObject ancestor)
+    {
+        for (var e = element; e is not null; e = LogicalTreeHelper.GetParent(e) ?? (e as FrameworkElement)?.Parent ?? VisualTreeHelper.GetParent(e))
+            if (ReferenceEquals(e, ancestor) && !ReferenceEquals(element, ancestor)) return true;
+        return false;
     }
 
     private static readonly (MediaKey Action, string Label)[] RemapActions =
@@ -186,6 +298,8 @@ public partial class SettingsWindow : Window
     {
         if (_freeRows.Any(r => r != self && string.Equals(r.Box.Value, chord, StringComparison.OrdinalIgnoreCase)))
             return $"{chord} is already used by another free shortcut. Clear it first.";
+        if (_chordBoxes.Any(b => string.Equals(b.Value, chord, StringComparison.OrdinalIgnoreCase)))
+            return $"{chord} is already used by another shortcut. Clear it first.";
         if (self is not null && string.Equals(ModeHotkeyBox.Value, chord, StringComparison.OrdinalIgnoreCase))
             return $"{chord} is the competitive mode shortcut. Choose another combination.";
         if (self is not null && Hotkey.TryParse(chord, out var h) && _hotkeyAvailable?.Invoke(h) == false)
@@ -222,7 +336,20 @@ public partial class SettingsWindow : Window
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => Close();
 
+    /// <summary>Saves and applies, keeping the window open (and unmodified).</summary>
     private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        if (Commit()) MarkSaved();
+    }
+
+    /// <summary>Saves, applies and closes.</summary>
+    private void SaveExit_Click(object sender, RoutedEventArgs e)
+    {
+        if (Commit()) Close();
+    }
+
+    /// <summary>Reads the window, validates it and raises <see cref="Saved"/>. False (window stays open) when there are errors.</summary>
+    private bool Commit()
     {
         var settings = new AppSettings
         {
@@ -239,13 +366,19 @@ public partial class SettingsWindow : Window
                 ? new List<string>()
                 : CycleDevices.Where(d => d.Included).Select(d => d.Id).ToList(),
         };
+        ReadExtras(settings);
         var errors = settings.Validate().ToList();
+        errors.AddRange(ExtraErrors());
         if (CycleDevices.Count > 0 && CycleDevices.All(d => !d.Included))
             errors.Add("Select at least one output device to cycle through.");
         ErrorList.ItemsSource = errors;
-        if (errors.Count > 0) return;
+        if (errors.Count > 0) return false;
         Saved?.Invoke(settings);
-        Close();
+        // Later saves compare with this state: the live competitive mode wins again unless the box is changed once more,
+        // and an app shown again is not shown again (nor re-shown after being hidden anew from the mixer) by the next save.
+        _initialCompetitive = settings.CompetitiveMode;
+        ShownAgain.Clear();
+        return true;
     }
 }
 

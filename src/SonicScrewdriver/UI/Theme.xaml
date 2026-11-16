@@ -3,6 +3,10 @@
                     xmlns:ui="clr-namespace:SonicScrewdriver.UI">
     <SolidColorBrush x:Key="BgBrush" Color="#F21F1F1F"/>
     <SolidColorBrush x:Key="PanelBrush" Color="#2B2B2B"/>
+    <!-- Very light backgrounds that set the rows of the mixer apart: device, app, what is playing -->
+    <SolidColorBrush x:Key="DeviceRowBrush" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="AppRowBrush" Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="PlayingBrush" Color="#22000000"/>
     <SolidColorBrush x:Key="FgBrush" Color="#FFFFFF"/>
     <SolidColorBrush x:Key="SubtleBrush" Color="#B3FFFFFF"/>
     <SolidColorBrush x:Key="AccentBrush" Color="#0A84FF"/>
@@ -167,6 +171,65 @@
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="Padding" Value="16"/>
         <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+
+    <!-- Tabs of the settings window: flat headers, accent underline on the selected one -->
+    <Style TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid KeyboardNavigation.TabNavigation="Local">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                            <TabPanel IsItemsHost="True" Background="Transparent" KeyboardNavigation.TabIndex="1"/>
+                        </Border>
+                        <ContentPresenter Grid.Row="1" ContentSource="SelectedContent" KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="2"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="TabItem">
+        <Setter Property="Foreground" Value="{StaticResource SubtleBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style>
+                    <Setter Property="Control.Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Margin="2" RadiusX="4" RadiusY="4" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.5" StrokeDashArray="2 2" SnapsToDevicePixels="True"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Bd" Padding="16,9,16,8" Margin="0,0,4,-1" Background="Transparent" BorderThickness="0,0,0,2" BorderBrush="Transparent">
+                        <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}" TextElement.FontSize="14" TextElement.FontWeight="SemiBold"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource FgBrush}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- Check box: rounded box with a tick -->

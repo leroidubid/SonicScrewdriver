@@ -4,6 +4,53 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-16
+
+### Added
+
+- **Command line:** `SonicScrewdriver.exe --set <app> <0-100>`, `--mute`, `--unmute`, `--toggle-mute`, `--profile <name>`,
+  `--mute-all`, `--mic-mute` and `--toggle-competitive`. A second launch hands the command to the running instance
+  (WM_COPYDATA to a hidden message-only window: no pipe, no service) and exits with a code (0 done, 1 usage, 2 not
+  running, 3 not found, 4 refused in competitive mode, 5 no answer) and a message on the parent console. Documented
+  for Stream Deck, Touch Portal and AutoHotkey.
+- **Mute everything:** one shortcut mutes every app (per-app mute: the Windows master and the levels are untouched;
+  hidden apps are left out), the next press restores each previous mute state exactly.
+- **Maximum volume per app:** a cap (1-100 %) applied to the slider, the shortcuts, the commands and the profiles; the
+  slider snaps back; an app that goes above its cap by itself is brought back (a watch that runs only while a cap exists
+  and not in competitive mode).
+- **Volume profiles:** named sets of app volumes with an optional master volume, an optional shortcut and an optional
+  program that applies the profile when it starts (same process-name snapshot as the automatic competitive mode).
+  Listed in the tray menu, editable in the settings (with "Add running apps").
+- **Now playing in the mixer** (off by default): title, artist and Previous / Play-Pause / Next buttons in each row,
+  from the Windows media sessions, read only while the mixer is open.
+- **Remembered routing:** "this app always plays on this output", applied when the app's session appears; a device that
+  is not plugged in is skipped. Off in competitive mode.
+- **Output device priority list** (off by default): the default output becomes the first plugged-in device of an ordered
+  list when devices come and go; an output chosen by hand is kept until the top choice changes. Off in competitive mode.
+- **Microphone:** a shortcut mutes and unmutes the default microphone (OSD, grey tray icon while muted) and the mixer can
+  show its volume and mute. Follows Windows notifications only while one of these is on; off in competitive mode.
+- **Automatic ducking** (off by default): a voice app's session peak level lowers the apps marked as ducked to a chosen
+  percentage of their level, with attack and release delays, restores the exact levels, and respects a slider moved
+  meanwhile. The meter runs only while a voice app has a session and not in competitive mode.
+- **Streamer mode** (off by default): the reverse of ducking. While you speak into the default microphone (its peak level
+  above a threshold, 5 % by default, with attack and release delays) the apps you ticked go down to a percentage of
+  their level (30 % by default) and come back to the exact previous levels; a slider moved meanwhile is respected. It
+  shares the ducking engine and a common ledger of levels, so with both active nothing is lowered twice and everything
+  comes back to what you had. The microphone meter and its 100 ms timer exist only while the mode is on and an app is
+  ticked; microphone changes (unplugged, new default) are handled; off in competitive mode.
+- **Settings in three tabs** (Shortcuts, Audio, General) with a flat tab style, keyboard navigation (Ctrl+Tab, arrows),
+  each tab scrolling on its own, the last tab remembered while the app runs, and a red "Competitive mode" label on the
+  tabs that have greyed options.
+- **Save and Save & exit** buttons: Save applies and keeps the window open ("Saved" note, Cancel becomes Close), Save & exit
+  applies and closes (Enter). Errors keep the window open.
+- Hand-edited settings for all of these are validated and sanitized like the existing ones.
+
+### Changed
+
+- **Mixer:** the device, each app and the "now playing" line have a very light background of their own (three tints), so
+  the names are easier to tell apart. The settings window greys out what competitive mode switches off and marks each
+  card and tab concerned with a red "Competitive mode" label.
+
 ## [1.0.0] - 2026-11-16
 
 First public release.
@@ -79,4 +126,5 @@ First public release.
   anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come
   from the file on disk.
 
+[1.1.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.1.0
 [1.0.0]: https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.0.0
