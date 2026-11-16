@@ -37,6 +37,7 @@ public partial class App : Application
     private LimitEnforcer _enforcer = null!;
     private DuckingEngine _ducking = null!;
     private DuckingEngine _streamer = null!;
+    private DuckLedger _ledger = null!;
     private MicrophoneMeter? _micMeter;
     private readonly System.Windows.Threading.DispatcherTimer _streamTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private readonly System.Windows.Threading.DispatcherTimer _duckTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
@@ -169,10 +170,11 @@ public partial class App : Application
             _priorityTimer.Stop();
             ApplyDevicePriorityNow();
         };
-        var ledger = new DuckLedger(_audio); // shared: levels always come back to what the user had
-        _ducking = new DuckingEngine(_audio, () => _settings.Ducking, ledger, blocked: () => _settings.CompetitiveMode);
+        _ledger = new DuckLedger(_audio); // shared: levels always come back to what the user had
+        _ledger.WaitingChanged += UpdateLedgerWatch;
+        _ducking = new DuckingEngine(_audio, () => _settings.Ducking, _ledger, blocked: () => _settings.CompetitiveMode);
         _duckTimer.Tick += (_, _) => _ducking.Tick(Environment.TickCount64);
-        _streamer = new DuckingEngine(_audio, () => _settings.Streamer.ToDucking(), ledger, () => _micMeter?.Peak(), () => _settings.CompetitiveMode);
+        _streamer = new DuckingEngine(_audio, () => _settings.Streamer.ToDucking(), _ledger, () => _micMeter?.Peak(), () => _settings.CompetitiveMode);
         _streamTimer.Tick += (_, _) => _streamer.Tick(Environment.TickCount64);
         _limitTimer.Tick += (_, _) => { _limitTimer.Stop(); _enforcer.Enforce(); };
         _runner = new CommandRunner(_audio, () => _settings.CompetitiveMode, on => SetCompetitive(on, notify: true))
@@ -223,6 +225,7 @@ public partial class App : Application
         ApplyMicrophone();
         ApplyDucking();
         ApplyStreamer();
+        UpdateLedgerWatch();
         _settingsWindow?.FollowLiveMode(on); // the settings box follows a toggle made while the window is open
     }
 
@@ -260,6 +263,19 @@ public partial class App : Application
         _audio.SessionsChanged += OnDuckingEvent;
         UpdateDuckTimer();
     }
+
+    /// <summary>
+    /// An app that had no session when its level was given back is waited for (a few minutes): session changes are
+    /// observed only while one is waiting and competitive mode is off, and bring its level back when it returns.
+    /// </summary>
+    private void UpdateLedgerWatch()
+    {
+        _audio.SessionsChanged -= OnLedgerEvent;
+        if (_ledger.HasWaiting && !_settings.CompetitiveMode) _audio.SessionsChanged += OnLedgerEvent;
+    }
+
+    // Any thread: the retry itself runs on the UI thread.
+    private void OnLedgerEvent(object? sender, EventArgs e) => Dispatcher.BeginInvoke(() => { if (!_settings.CompetitiveMode) _ledger.RetryPending(); });
 
     private void StopDucking()
     {
