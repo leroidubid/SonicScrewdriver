@@ -594,9 +594,9 @@ public partial class App : Application
         _priorityTimer.Stop();
         _profileRetry.Stop();
         _duckTimer.Stop();
-        _ducking?.Restore();
         _streamTimer.Stop();
-        _streamer?.Restore();
+        // Every lowered or muted app goes back to what the user had; one failure must not skip the others.
+        ShutdownSteps.RunAll(() => _ducking?.Restore(), () => _streamer?.Restore(), () => _muteAll?.Restore());
         _micMeter?.Dispose();
         _commandWindow?.Dispose();
         _mic?.Dispose();
