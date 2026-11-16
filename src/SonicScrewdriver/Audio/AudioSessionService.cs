@@ -119,7 +119,19 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         return list.OrderByDescending(d => d.IsDefault).ThenBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
+    public VolumeLimits Limits { get; } = new();
+
     public IReadOnlyList<int> GetProcessIds(string exe) => Sessions(exe).Select(s => s.Pid).Distinct().ToList();
+
+    public float? GetPeak(string exe)
+    {
+        try
+        {
+            var peaks = Sessions(exe).Select(s => s.Control.AudioMeterInformation.MasterPeakValue).ToList();
+            return peaks.Count == 0 ? null : peaks.Max();
+        }
+        catch (Exception) { return null; }
+    }
 
     public float? GetVolume(string exe)
     {
@@ -133,7 +145,7 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
 
     public bool SetVolume(string exe, float volume, string? deviceId = null)
     {
-        var v = Math.Clamp(volume, 0f, 1f);
+        var v = Limits.Clamp(exe, Math.Clamp(volume, 0f, 1f));
         var ok = false;
         foreach (var s in Sessions(exe, deviceId))
         {

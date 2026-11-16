@@ -15,6 +15,9 @@ internal sealed class FakeAudio : IAudioSessionService
 
     public IReadOnlyList<AudioApp> GetApps() =>
         Apps.Select(kv => new AudioApp(kv.Key, GetDisplayName(kv.Key), 1, kv.Value.Vol, kv.Value.Muted)).ToList();
+    public VolumeLimits Limits { get; } = new();
+    public Dictionary<string, float> Peaks { get; } = new();
+    public float? GetPeak(string exe) => Apps.ContainsKey(exe) ? Peaks.GetValueOrDefault(exe) : null;
     public float? GetVolume(string exe) => Apps.TryGetValue(exe, out var a) ? a.Vol : null;
     public List<AudioDevice>? DeviceList { get; set; }
     public List<string> DefaultCalls { get; } = new();
@@ -33,6 +36,7 @@ internal sealed class FakeAudio : IAudioSessionService
     public bool SetVolume(string exe, float volume, string? deviceId = null)
     {
         if (!Apps.ContainsKey(exe)) return false;
+        volume = Limits.Clamp(exe, volume);
         SetCalls.Add((exe, volume));
         Apps[exe] = (volume, Apps[exe].Muted);
         return true;
@@ -58,6 +62,10 @@ internal sealed class FakeMedia : IMediaSessionService
 {
     public MediaResult Result { get; set; } = MediaResult.Ok;
     public List<(string Exe, MediaKey Key)> Calls { get; } = new();
+    public NowPlaying? Playing { get; set; }
+    public List<Action?> Watchers { get; } = new();
+    public Task<NowPlaying?> GetNowPlayingAsync(string exe) => Task.FromResult(Playing);
+    public void Watch(Action? onChanged) => Watchers.Add(onChanged);
     public Task<MediaResult> SendAsync(string exe, MediaKey key)
     {
         Calls.Add((exe, key));

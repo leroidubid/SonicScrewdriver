@@ -11,10 +11,13 @@
             <TextBlock DockPanel.Dock="Bottom" x:Name="EmptyText" Text="No application is playing sound."
                        Foreground="{StaticResource SubtleBrush}" Margin="0,8,0,2" Visibility="Collapsed"/>
             <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <StackPanel>
                 <ItemsControl ItemsSource="{Binding Devices}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type ui:DeviceViewModel}">
                             <StackPanel Margin="0,4,0,8">
+                              <Border Background="{StaticResource DeviceRowBrush}" CornerRadius="6" Padding="10,7,10,2" Margin="0,0,0,4">
+                               <StackPanel>
                                 <!-- Device header: name, default marker / make-default button, volume -->
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Content="Set as default" Style="{StaticResource LinkButton}"
@@ -40,17 +43,21 @@
                                     <TextBlock Grid.Column="2" Foreground="{StaticResource FgBrush}" VerticalAlignment="Center"
                                                TextAlignment="Right" Text="{Binding Volume, StringFormat={}{0:0}}"/>
                                 </Grid>
+                               </StackPanel>
+                              </Border>
 
                                 <ItemsControl ItemsSource="{Binding Apps}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="{x:Type ui:AppVolumeViewModel}">
-                                            <Grid Margin="0,4" Background="Transparent" ToolTip="{Binding ExeName}"
+                                          <Border Background="{StaticResource AppRowBrush}" CornerRadius="6" Padding="8,6,8,6" Margin="0,2">
+                                            <Grid Background="Transparent" ToolTip="{Binding ExeName}"
                                                   ui:WheelVolume.Slider="{Binding ElementName=AppSlider}"
                                                   ContextMenuOpening="AppRow_ContextMenuOpening">
                                                 <Grid.ContextMenu>
                                                     <ContextMenu/>
                                                 </Grid.ContextMenu>
                                                 <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
                                                     <RowDefinition Height="Auto"/>
                                                     <RowDefinition Height="Auto"/>
                                                 </Grid.RowDefinitions>
@@ -76,7 +83,25 @@
                                                 </Grid>
                                                 <TextBlock Grid.Row="1" Grid.Column="2" Foreground="{StaticResource FgBrush}" VerticalAlignment="Center"
                                                            TextAlignment="Right" Text="{Binding Volume, StringFormat={}{0:0}}"/>
+                                                <!-- What the app plays, with transport buttons (only with "Show what is playing") -->
+                                                <Border Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Margin="12,4,0,0" Padding="8,3,8,3"
+                                                        Background="{StaticResource PlayingBrush}" CornerRadius="4"
+                                                        Visibility="{Binding HasNowPlaying, Converter={StaticResource BoolToVisibility}}">
+                                                <DockPanel>
+                                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                        <Button Content="&#xE100;" Style="{StaticResource LinkButton}" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{StaticResource FgBrush}"
+                                                                Margin="6,0" Click="Previous_Click" Tag="{Binding}" ToolTip="Previous"/>
+                                                        <Button Content="{Binding PlayGlyph}" Style="{StaticResource LinkButton}" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{StaticResource FgBrush}"
+                                                                Margin="6,0" Click="PlayPause_Click" Tag="{Binding}" ToolTip="Play / Pause"/>
+                                                        <Button Content="&#xE101;" Style="{StaticResource LinkButton}" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{StaticResource FgBrush}"
+                                                                Margin="6,0,0,0" Click="Next_Click" Tag="{Binding}" ToolTip="Next"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding NowPlayingText}" Foreground="{StaticResource SubtleBrush}" FontSize="11"
+                                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip="{Binding NowPlayingText}"/>
+                                                </DockPanel>
+                                                </Border>
                                             </Grid>
+                                          </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -85,6 +110,25 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- Default microphone (only with "Show the microphone in the mixer") -->
+                <Border x:Name="MicSection" Visibility="Collapsed" Margin="0,4,0,8" Background="{StaticResource DeviceRowBrush}" CornerRadius="6" Padding="10,7,10,2">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Name, StringFormat=Microphone: {0}}" Foreground="{StaticResource SubtleBrush}" FontSize="12"
+                               TextTrimming="CharacterEllipsis"/>
+                    <Grid Margin="0,4,0,6" Background="Transparent" ui:WheelVolume.Slider="{Binding ElementName=MicSlider}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="40"/>
+                        </Grid.ColumnDefinitions>
+                        <ToggleButton Style="{StaticResource MuteToggle}" IsChecked="{Binding Muted}"/>
+                        <Slider x:Name="MicSlider" Grid.Column="1" Margin="8,0" Style="{StaticResource FlatSlider}" Value="{Binding Volume}"/>
+                        <TextBlock Grid.Column="2" Foreground="{StaticResource FgBrush}" VerticalAlignment="Center"
+                                   TextAlignment="Right" Text="{Binding Volume, StringFormat={}{0:0}}"/>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
             </ScrollViewer>
         </DockPanel>
     </Border>

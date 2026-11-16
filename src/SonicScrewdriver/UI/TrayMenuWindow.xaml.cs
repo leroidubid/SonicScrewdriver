@@ -19,6 +19,8 @@ public partial class TrayMenuWindow : Window
     public event EventHandler? SettingsRequested;
     public event EventHandler? CompetitiveToggleRequested;
     public event EventHandler? QuitRequested;
+    /// <summary>A profile entry was chosen; the argument is the profile name.</summary>
+    public event EventHandler<string>? ProfileRequested;
 
     public TrayMenuWindow()
     {
@@ -55,7 +57,7 @@ public partial class TrayMenuWindow : Window
     /// the taskbar: above a bottom taskbar, below a top one, beside a side one. A second right-click on the icon just
     /// after the menu closed itself does not reopen it (the click that closed it was that same click).
     /// </summary>
-    public void ShowAt(Point cursor, Rect workArea, string device, IReadOnlyList<string> lines, bool competitive, string? hotkey)
+    public void ShowAt(Point cursor, Rect workArea, string device, IReadOnlyList<string> lines, bool competitive, string? hotkey, IReadOnlyList<string> profiles)
     {
         if ((DateTime.UtcNow - _hiddenAt).TotalMilliseconds < 400) return;
 
@@ -64,6 +66,19 @@ public partial class TrayMenuWindow : Window
         foreach (var line in lines)
             Lines.Children.Add(new TextBlock { Text = line, Foreground = (Brush)FindResource("SubtleBrush"), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
         Lines.Visibility = lines.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        ProfilesPanel.Children.Clear();
+        foreach (var name in profiles)
+        {
+            var item = new Button { Style = (Style)FindResource("MenuItemButton"), Tag = name };
+            System.Windows.Automation.AutomationProperties.SetName(item, "Profile " + name);
+            var row = new DockPanel();
+            row.Children.Add(new TextBlock { Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets"), Width = 22, VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new TextBlock { Text = name, TextTrimming = TextTrimming.CharacterEllipsis });
+            item.Content = row;
+            item.Click += (_, _) => { HideMenu(); ProfileRequested?.Invoke(this, name); };
+            ProfilesPanel.Children.Add(item);
+        }
+        ProfilesPanel.Visibility = profiles.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         CompetitiveGlyph.Opacity = competitive ? 1 : 0;
         CompetitiveGlyph.Foreground = competitive ? (Brush)FindResource("ErrorBrush") : (Brush)FindResource("FgBrush");
         CompetitiveHint.Text = hotkey ?? "";

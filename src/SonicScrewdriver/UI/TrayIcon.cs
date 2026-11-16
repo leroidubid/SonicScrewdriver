@@ -22,6 +22,8 @@ public sealed class TrayIcon : IDisposable
     private readonly HwndSource _window;
     private readonly IntPtr _hIcon;
     private IntPtr _hRedIcon; // competitive mode, built on first use
+    private IntPtr _hGreyIcon; // microphone muted, built on first use
+    private bool _micMuted;
     private readonly uint _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
     private readonly DispatcherTimer _hoverTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private bool _wheelArmed;
@@ -38,6 +40,12 @@ public sealed class TrayIcon : IDisposable
 
     /// <summary>The competitive-mode shortcut, shown next to its menu entry (null when none).</summary>
     public string? ModeHotkeyText { get; set; }
+
+    /// <summary>Names of the volume profiles listed in the menu (read each time it opens).</summary>
+    public Func<IReadOnlyList<string>>? ProfileNames { get; set; }
+
+    /// <summary>A profile was chosen in the menu.</summary>
+    public event EventHandler<string>? ProfileRequested;
 
     public event EventHandler? OpenFlyoutRequested;
     public event EventHandler? OpenSettingsRequested;
@@ -74,9 +82,29 @@ public sealed class TrayIcon : IDisposable
     {
         _competitive = on;
         UpdateTip();
-        if (on && _hRedIcon == IntPtr.Zero) _hRedIcon = Tint(_hIcon);
+        UpdateIcon();
+    }
+
+    /// <summary>The microphone is muted (a grey icon) or not; competitive mode's red icon wins while it is on.</summary>
+    public void SetMicMuted(bool muted)
+    {
+        if (muted == _micMuted) return;
+        _micMuted = muted;
+        UpdateIcon();
+    }
+
+    private IntPtr CurrentIcon()
+    {
+        if (_competitive && _hRedIcon == IntPtr.Zero) _hRedIcon = Tint(_hIcon);
+        if (_micMuted && _hGreyIcon == IntPtr.Zero) _hGreyIcon = Tint(_hIcon, grey: true);
+        if (_competitive && _hRedIcon != IntPtr.Zero) return _hRedIcon;
+        return _micMuted && _hGreyIcon != IntPtr.Zero ? _hGreyIcon : _hIcon;
+    }
+
+    private void UpdateIcon()
+    {
         var data = NewData(NIF_ICON);
-        data.hIcon = on && _hRedIcon != IntPtr.Zero ? _hRedIcon : _hIcon;
+        data.hIcon = CurrentIcon();
         Shell_NotifyIcon(NIM_MODIFY, ref data);
     }
 
@@ -115,7 +143,7 @@ public sealed class TrayIcon : IDisposable
     {
         var data = NewData(NIF_MESSAGE | NIF_ICON | NIF_TIP);
         data.uCallbackMessage = WM_APP_TRAY;
-        data.hIcon = _competitive && _hRedIcon != IntPtr.Zero ? _hRedIcon : _hIcon;
+        data.hIcon = CurrentIcon();
         data.szTip = _tip;
         Shell_NotifyIcon(NIM_ADD, ref data);
     }
@@ -176,6 +204,7 @@ public sealed class TrayIcon : IDisposable
             _menu = new TrayMenuWindow();
             _menu.SettingsRequested += (_, _) => OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
             _menu.CompetitiveToggleRequested += (_, _) => CompetitiveModeToggled?.Invoke(this, !_competitive);
+            _menu.ProfileRequested += (_, name) => ProfileRequested?.Invoke(this, name);
             _menu.QuitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
         }
         GetCursorPos(out var pt);
@@ -185,7 +214,7 @@ public sealed class TrayIcon : IDisposable
         if (GetMonitorInfo(MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST), ref monitorInfo))
             work = new Rect(monitorInfo.rcWork.Left, monitorInfo.rcWork.Top,
                 monitorInfo.rcWork.Right - monitorInfo.rcWork.Left, monitorInfo.rcWork.Bottom - monitorInfo.rcWork.Top);
-        _menu.ShowAt(new Point(pt.X, pt.Y), work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText);
+        _menu.ShowAt(new Point(pt.X, pt.Y), work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText, ProfileNames?.Invoke() ?? Array.Empty<string>());
     }
 
     // --- Mouse wheel over the icon -------------------------------------------------------------
@@ -283,7 +312,7 @@ public sealed class TrayIcon : IDisposable
     /// arcs) turn red; the steel and grip stay neutral, so the pixel-art shapes stay as readable as in the normal icon
     /// and the white hot core of the emitter stays white.
     /// </summary>
-    private static IntPtr Tint(IntPtr icon)
+    private static IntPtr Tint(IntPtr icon, bool grey = false)
     {
         try
         {
@@ -298,6 +327,12 @@ public sealed class TrayIcon : IDisposable
                 if (a == 0) continue;
                 int b = px[i] * 255 / a, g = px[i + 1] * 255 / a, r = px[i + 2] * 255 / a; // back to straight alpha
                 int sat = Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b));
+                if (grey)
+                {
+                    var l = (r * 30 + g * 59 + b * 11) / 100 * 3 / 4; // a darker grey
+                    px[i + 2] = px[i + 1] = px[i] = (byte)(l * a / 255);
+                    continue;
+                }
                 double k = Math.Clamp((sat - 30) / 60.0, 0, 1); // 0 for grays, 1 for the saturated blue
                 int nr = (int)(r + (b - r) * k), ng = (int)(g + (g / 4 - g) * k), nb = (int)(b + (r * 3 / 5 - b) * k);
                 px[i + 2] = (byte)(nr * a / 255);
@@ -329,6 +364,7 @@ public sealed class TrayIcon : IDisposable
         Shell_NotifyIcon(NIM_DELETE, ref data);
         DestroyIcon(_hIcon);
         if (_hRedIcon != IntPtr.Zero) DestroyIcon(_hRedIcon);
+        if (_hGreyIcon != IntPtr.Zero) DestroyIcon(_hGreyIcon);
         _window.Dispose();
     }
 

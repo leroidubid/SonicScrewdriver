@@ -48,7 +48,7 @@ public sealed class ActionDispatcher
             case MediaKey.VolumeDown:
                 var current = _audio.GetVolume(exe);
                 if (current is null) { _osd.Show(exe, title, "No sound control"); return; }
-                var next = VolumeMath.Apply(current.Value, key, binding.StepPercent);
+                var next = _audio.Limits.Clamp(exe, VolumeMath.Apply(current.Value, key, binding.StepPercent));
                 if (!_audio.SetVolume(exe, next)) { _osd.Show(exe, title, "No sound control"); return; }
                 if (_audio.GetMute(exe) == true) _audio.SetMute(exe, false); // like Windows: changing volume unmutes
                 _osd.Show(exe, title, FormatPercent(next));

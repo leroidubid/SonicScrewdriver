@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:SonicScrewdriver.UI"
-        Title="Sonic Screwdriver — Settings" Width="720" Height="760" MinWidth="640" MinHeight="520"
+        Title="Sonic Screwdriver — Settings" Width="720" Height="720" MinWidth="640" MinHeight="480"
         WindowStartupLocation="CenterScreen" Background="#18181A" Foreground="White">
     <Window.Resources>
         <Style TargetType="TextBlock">
@@ -28,7 +28,7 @@
             <Setter Property="Margin" Value="0,6,0,0"/>
         </Style>
     </Window.Resources>
-    <DockPanel Margin="20,16,20,16">
+    <DockPanel Margin="20,12,20,16">
         <StackPanel DockPanel.Dock="Bottom">
             <ItemsControl x:Name="ErrorList" Margin="0,8,0,0">
                 <ItemsControl.ItemTemplate>
@@ -38,18 +38,19 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                <Button Content="Cancel" Style="{StaticResource FlatButton}" Padding="18,8" Margin="0,0,8,0" Click="Cancel_Click" IsCancel="True"/>
-                <Button Content="Save" Style="{StaticResource FlatButton}" Padding="22,8" Background="{StaticResource AccentBrush}" Click="Save_Click" IsDefault="True"/>
+                <TextBlock x:Name="SavedText" Text="&#x2713; Saved" Foreground="{StaticResource SubtleBrush}" VerticalAlignment="Center" Margin="0,0,14,0" Visibility="Collapsed"/>
+                <Button x:Name="CancelButton" Content="Close" Style="{StaticResource FlatButton}" Padding="18,8" Margin="0,0,8,0" Click="Cancel_Click" IsCancel="True"/>
+                <Button x:Name="SaveButton" Content="Save" Style="{StaticResource FlatButton}" Padding="22,8" Margin="0,0,8,0" Click="Save_Click"/>
+                <Button x:Name="SaveExitButton" Content="Save &amp; exit" Style="{StaticResource FlatButton}" Padding="22,8" Background="{StaticResource AccentBrush}" Click="SaveExit_Click" IsDefault="True"/>
             </StackPanel>
         </StackPanel>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,12,0">
-                <TextBlock Text="Settings" FontSize="24" FontWeight="SemiBold"/>
-                <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,16"
-                           Text="Shortcuts on your media keys, the output devices to cycle through, and Competitive mode for online games."/>
+        <TextBlock DockPanel.Dock="Top" Text="Settings" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
-                <StackPanel x:Name="ShortcutsSection">
+        <TabControl x:Name="Tabs">
+        <TabItem x:Name="TabShortcuts" Header="Shortcuts">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ShortcutsSection" Margin="0,12,12,0">
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Text="Shortcuts" Style="{StaticResource CardTitle}"/>
@@ -128,29 +129,170 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
-
+            </ScrollViewer>
+        </TabItem>
+        <TabItem x:Name="TabAudio" Header="Audio">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,12,12,0">
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="Hidden apps" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Style="{StaticResource Hint}"
-                                   Text="Apps hidden from the mixer (right-click an app there). They keep working with shortcuts and their volume is not touched."/>
-                        <TextBlock x:Name="HiddenEmpty" Style="{StaticResource Hint}" Text="No hidden app." Margin="0,8,0,0"/>
-                        <ItemsControl x:Name="HiddenList" Margin="0,8,0,0">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Background="{StaticResource RowBrush}" CornerRadius="8" Padding="10" Margin="0,0,0,6">
-                                        <DockPanel>
-                                            <Button DockPanel.Dock="Right" Content="Show again" Style="{StaticResource FlatButton}" Padding="14,6"
-                                                    Click="ShowAgain_Click" Tag="{Binding}"/>
-                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        </DockPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <TextBlock Text="Volume profiles" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,12"
+                                   Text="A named set of app volumes, for example Game night: Discord 80, music 30, browser 10. Apply it from the tray menu, a shortcut, the command line (--profile) or when a program starts. Apps that are not playing are skipped. Use &quot;+ Add running apps&quot; to capture the current levels. The shortcut and the start-with-program trigger are off in competitive mode."/>
+                        <StackPanel x:Name="ProfilePanel"/>
+                        <Button HorizontalAlignment="Left" Content="+ Add profile" Style="{StaticResource FlatButton}" Click="AddProfile_Click"/>
                     </StackPanel>
                 </Border>
 
+                    <Border Style="{StaticResource Card}" Tag="Dim">
+                        <StackPanel>
+                            <TextBlock Text="Mute everything" Style="{StaticResource CardTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="One shortcut mutes every app (apps hidden from the mixer excepted); the next press puts each one back exactly as it was. Each app is muted on its own: the Windows master volume and the levels are not touched. Off in competitive mode."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <ui:KeyCaptureBox x:Name="MuteAllBox" Chord="True" Width="220" Height="32" Style="{StaticResource {x:Type TextBox}}"/>
+                                <Button Content="Clear" Style="{StaticResource FlatButton}" Padding="14,6" Margin="8,0,0,0" Click="ClearMuteAll_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="MuteAllError" Style="{StaticResource ErrorText}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Tag="Dim">
+                        <StackPanel>
+                            <TextBlock Text="Microphone" Style="{StaticResource CardTitle}"/>
+                            <TextBlock Style="{StaticResource Hint}"
+                                       Text="One shortcut mutes and unmutes the default microphone (with the on-screen display; the tray icon turns grey while it is muted). The volume and mute of the microphone can also be shown at the bottom of the mixer. Both follow the microphone through Windows notifications while one of them is on, and stop in competitive mode."/>
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <ui:KeyCaptureBox x:Name="MicBox" Chord="True" Width="220" Height="32" Style="{StaticResource {x:Type TextBox}}"/>
+                                <Button Content="Clear" Style="{StaticResource FlatButton}" Padding="14,6" Margin="8,0,0,0" Click="ClearMic_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="MicError" Style="{StaticResource ErrorText}"/>
+                            <CheckBox x:Name="MicMixerBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                      Content="Show the microphone in the mixer"/>
+                        </StackPanel>
+                    </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Automatic ducking" Style="{StaticResource CardTitle}"/>
+                        <CheckBox x:Name="DuckBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                  Content="Lower other apps while a voice app speaks"/>
+                        <TextBlock x:Name="DuckHint" Style="{StaticResource Hint}" Margin="0,4,0,8"
+                                   Text="Off by default. Mark the voice apps (Discord, Teams...) and the apps to lower. Speech is detected from the voice app's sound level; the others go down to the chosen level, then return to exactly what they were. A slider you move while they are lowered is respected. The level is read about ten times a second, only while a voice app has a session; it stops in competitive mode."/>
+                        <StackPanel x:Name="DuckSettingsPanel">
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="Lower to" Width="170" VerticalAlignment="Center"/>
+                                <TextBox x:Name="DuckToBox" Width="56" Height="32" HorizontalContentAlignment="Center" ToolTip="Percent of their level (0-100)"/>
+                                <TextBlock Text="% of their level" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="Speaking threshold" Width="170" VerticalAlignment="Center"/>
+                                <TextBox x:Name="DuckThresholdBox" Width="56" Height="32" HorizontalContentAlignment="Center" ToolTip="Peak level of the voice app that counts as speaking (1-50)"/>
+                                <TextBlock Text="% peak level" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="Reaction delay" Width="170" VerticalAlignment="Center"/>
+                                <TextBox x:Name="DuckAttackBox" Width="64" Height="32" HorizontalContentAlignment="Center" ToolTip="Speech must last this long before lowering (0-2000 ms)"/>
+                                <TextBlock Text="ms" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,10">
+                                <TextBlock Text="Release delay" Width="170" VerticalAlignment="Center"/>
+                                <TextBox x:Name="DuckReleaseBox" Width="64" Height="32" HorizontalContentAlignment="Center" ToolTip="Silence must last this long before raising again (200-10000 ms)"/>
+                                <TextBlock Text="ms" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel x:Name="DuckPanel"/>
+                            <Button HorizontalAlignment="Left" Content="+ Add app" Style="{StaticResource FlatButton}" Click="AddDuck_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+<Border Style="{StaticResource Card}">
+    <StackPanel>
+        <TextBlock Text="Streamer mode" Style="{StaticResource CardTitle}"/>
+        <CheckBox x:Name="StreamBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                  Content="Lower other apps while I speak"/>
+        <TextBlock x:Name="StreamHint" Style="{StaticResource Hint}" Margin="0,4,0,8"
+                   Text="The reverse of ducking. Off by default. Tick the apps to lower (a game, music...): while you speak into the default microphone they go down to the chosen share of their level, then return to exactly what they were. A slider you move while they are lowered is respected. The microphone level is read about ten times a second, only while the mode is on and an app is ticked; it stops in competitive mode."/>
+        <StackPanel x:Name="StreamSettingsPanel">
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Lower to" Width="170" VerticalAlignment="Center"/>
+                <TextBox x:Name="StreamToBox" Width="56" Height="32" HorizontalContentAlignment="Center" ToolTip="Percent of their level (0-100)"/>
+                <TextBlock Text="% of their level" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Speaking threshold" Width="170" VerticalAlignment="Center"/>
+                <TextBox x:Name="StreamThresholdBox" Width="56" Height="32" HorizontalContentAlignment="Center" ToolTip="Peak level of the microphone that counts as speaking (1-50): raise it if room noise triggers it"/>
+                <TextBlock Text="% peak level" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <TextBlock Text="Reaction delay" Width="170" VerticalAlignment="Center"/>
+                <TextBox x:Name="StreamAttackBox" Width="64" Height="32" HorizontalContentAlignment="Center" ToolTip="Speech must last this long before lowering (0-2000 ms)"/>
+                <TextBlock Text="ms" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,10">
+                <TextBlock Text="Release delay" Width="170" VerticalAlignment="Center"/>
+                <TextBox x:Name="StreamReleaseBox" Width="64" Height="32" HorizontalContentAlignment="Center" ToolTip="Silence must last this long before raising again (200-10000 ms)"/>
+                <TextBlock Text="ms" Foreground="{StaticResource SubtleBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel x:Name="StreamPanel"/>
+            <StackPanel Orientation="Horizontal">
+                <Button Content="+ Add app" Style="{StaticResource FlatButton}" Click="AddStream_Click"/>
+                <Button Content="+ Add running apps" Style="{StaticResource FlatButton}" Margin="8,0,0,0" Click="AddStreamRunning_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </StackPanel>
+</Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Maximum volume per app" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,12"
+                                   Text="A cap for an app, for example a browser at 40 %. The mixer slider, the shortcuts and the commands stop at it, and an app that goes above it by itself is brought back (that check stops in competitive mode). Pick a running app or type an executable name."/>
+                        <StackPanel x:Name="LimitPanel"/>
+                        <Button HorizontalAlignment="Left" Content="+ Add limit" Style="{StaticResource FlatButton}" Click="AddLimit_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Remembered routing" Style="{StaticResource CardTitle}"/>
+                        <TextBlock x:Name="RoutingHint" Style="{StaticResource Hint}" Margin="0,4,0,12"
+                                   Text="An app that always plays on the same output, for example Discord on the headset and Spotify on the speakers. The rule is applied when the app's sound starts (an output you chose by hand stays until the app restarts); a device that is not plugged in is skipped. Uses the same Windows setting as the mixer's right-click menu. Off in competitive mode."/>
+                        <StackPanel x:Name="RoutingPanel"/>
+                        <Button x:Name="AddRoutingButton" HorizontalAlignment="Left" Content="+ Add rule" Style="{StaticResource FlatButton}" Click="AddRouting_Click"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Output device priority" Style="{StaticResource CardTitle}"/>
+                        <CheckBox x:Name="PriorityBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                  Content="Choose the default output from this list"/>
+                        <TextBlock x:Name="PriorityHint" Style="{StaticResource Hint}" Margin="0,4,0,12"
+                                   Text="Devices from most to least wanted (headset, then speakers, then monitor). When devices are plugged in or removed, the default output becomes the first one of the list that is plugged in. An output you pick by hand is kept until the first plugged-in device of the list changes. This list is separate from the Output device cycle. Off in competitive mode."/>
+                        <StackPanel x:Name="PriorityPanel"/>
+                        <StackPanel x:Name="PriorityAddRow" Orientation="Horizontal" Margin="0,4,0,0">
+                            <ComboBox x:Name="PriorityChoice" Width="260" Height="32" DisplayMemberPath="Label"/>
+                            <Button Content="+ Add device" Style="{StaticResource FlatButton}" Margin="8,0,0,0" Click="AddPriority_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+<Border Style="{StaticResource Card}">
+    <StackPanel>
+        <TextBlock Text="Now playing" Style="{StaticResource CardTitle}"/>
+        <CheckBox x:Name="NowPlayingBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                  Content="Show what is playing in the mixer"/>
+        <TextBlock x:Name="NowPlayingHint" Style="{StaticResource Hint}"
+                   Text="Title and artist under each app, with Previous, Play/Pause and Next buttons. Read from the Windows media sessions only while the mixer is open. Off in competitive mode."/>
+    </StackPanel>
+</Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem x:Name="TabGeneral" Header="General">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,12,12,0">
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Text="Competitive mode" Style="{StaticResource CardTitle}"/>
@@ -197,14 +339,38 @@
                     </StackPanel>
                 </Border>
 
+<Border Style="{StaticResource Card}">
+    <StackPanel>
+        <TextBlock Text="General" Style="{StaticResource CardTitle}"/>
+        <CheckBox x:Name="StartupBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                  Content="Start with Windows"/>
+    </StackPanel>
+</Border>
+
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Text="General" Style="{StaticResource CardTitle}"/>
-                        <CheckBox x:Name="StartupBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                                  Content="Start with Windows"/>
+                        <TextBlock Text="Hidden apps" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Style="{StaticResource Hint}"
+                                   Text="Apps hidden from the mixer (right-click an app there). They keep working with shortcuts and their volume is not touched."/>
+                        <TextBlock x:Name="HiddenEmpty" Style="{StaticResource Hint}" Text="No hidden app." Margin="0,8,0,0"/>
+                        <ItemsControl x:Name="HiddenList" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource RowBrush}" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="Show again" Style="{StaticResource FlatButton}" Padding="14,6"
+                                                    Click="ShowAgain_Click" Tag="{Binding}"/>
+                                            <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
-            </StackPanel>
-        </ScrollViewer>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        </TabControl>
     </DockPanel>
 </Window>

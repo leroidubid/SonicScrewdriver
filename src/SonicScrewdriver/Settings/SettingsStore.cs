@@ -47,6 +47,16 @@ public sealed class SettingsStore
             s.HiddenApps = AppSettings.SanitizeExeList(s.HiddenApps);
             s.PinnedApps = AppSettings.SanitizeExeList(s.PinnedApps).Where(p => !s.HiddenApps.Contains(p)).ToList();
             s.FreeHotkeys = SanitizeFreeHotkeys(s.FreeHotkeys, s.CompetitiveHotkey);
+            var chords = new HashSet<Input.Hotkey>(s.FreeHotkeys.Select(f => { f.TryGetHotkey(out var c); return c; }));
+            if (Input.Hotkey.TryParse(s.CompetitiveHotkey, out var modeChord)) chords.Add(modeChord);
+            s.MaxVolumes = SanitizeLimits(s.MaxVolumes);
+            s.RoutingRules = SanitizeRouting(s.RoutingRules);
+            s.DevicePriority = SanitizeDevices(s.DevicePriority);
+            s.MuteAllHotkey = AppSettings.TakeChord(s.MuteAllHotkey, chords);
+            s.Ducking = DuckingSettings.Sanitize(s.Ducking);
+            s.Streamer = StreamerSettings.Sanitize(s.Streamer);
+            s.MicMuteHotkey = AppSettings.TakeChord(s.MicMuteHotkey, chords);
+            s.Profiles = VolumeProfile.Sanitize(s.Profiles, chords);
             s.CompetitiveHotkey =Input.Hotkey.TryParse(s.CompetitiveHotkey, out var hotkey) ? hotkey.ToString() : null;
             return s;
         }
@@ -125,6 +135,46 @@ public sealed class SettingsStore
             keys.Add(vk);
             actions.Add(r.Action);
             result.Add(new KeyRemap(r.Action, Input.KeyNames.NameOf(vk)!));
+        }
+        return result;
+    }
+
+    /// <summary>Normalizes exe names, drops rules without an app or device, keeps the first rule of an app.</summary>
+    internal static List<RoutingRule> SanitizeRouting(List<RoutingRule>? rules)
+    {
+        var seen = new HashSet<string>();
+        var result = new List<RoutingRule>();
+        foreach (var r in rules ?? new List<RoutingRule>())
+        {
+            var exe = Bindings.Target.NormalizeExe(r?.ExeName ?? "");
+            var id = (r?.DeviceId ?? "").Trim();
+            if (exe.Length > 0 && id.Length > 0 && seen.Add(exe)) result.Add(new RoutingRule(exe, id, (r!.DeviceName ?? "").Trim()));
+        }
+        return result;
+    }
+
+    /// <summary>Drops devices without an id and keeps the first of duplicates; order kept.</summary>
+    internal static List<DeviceRef> SanitizeDevices(List<DeviceRef>? devices)
+    {
+        var seen = new HashSet<string>();
+        var result = new List<DeviceRef>();
+        foreach (var d in devices ?? new List<DeviceRef>())
+        {
+            var id = (d?.Id ?? "").Trim();
+            if (id.Length > 0 && seen.Add(id)) result.Add(new DeviceRef(id, (d!.Name ?? "").Trim()));
+        }
+        return result;
+    }
+
+    /// <summary>Normalizes exe names, clamps the percentage to 1-100, drops empty entries and keeps the first of duplicates.</summary>
+    internal static List<AppLimit> SanitizeLimits(List<AppLimit>? limits)
+    {
+        var seen = new HashSet<string>();
+        var result = new List<AppLimit>();
+        foreach (var l in limits ?? new List<AppLimit>())
+        {
+            var exe = Bindings.Target.NormalizeExe(l?.ExeName ?? "");
+            if (exe.Length > 0 && seen.Add(exe)) result.Add(new AppLimit(exe, Math.Clamp(l!.Percent, 1, 100)));
         }
         return result;
     }

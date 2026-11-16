@@ -326,6 +326,74 @@ try {
     $app.Refresh()
     Check 'Remap: app alive, no key loop' (-not $app.HasExited) "exited=$($app.HasExited)"
 
+    # 14b. Command line, maximum volume, mute everything and profiles (all through the running app)
+    Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
+    function SsCmd([string[]]$cmd) { (Start-Process $Exe -ArgumentList $cmd -Wait -PassThru -WindowStyle Hidden).ExitCode }
+    Check 'Command line: exit code 2 when the app is not running' ((SsCmd @('--set', 'powershell.exe', '30')) -eq 2) 'app stopped'
+    @'
+{
+  "Bindings": [
+    { "Modifiers": "Shift", "Target": { "Kind": "Process", "ExeName": "powershell.exe" }, "StepPercent": 10 }
+  ],
+  "StartWithWindows": false,
+  "MuteAllHotkey": "Ctrl+Alt+F4",
+  "MaxVolumes": [ { "ExeName": "powershell.exe", "Percent": 40 } ],
+  "Profiles": [ { "Name": "E2E profile", "Apps": [ { "ExeName": "powershell.exe", "Volume": 25 } ] } ]
+}
+'@ | Set-Content $settingsPath -Encoding UTF8
+    $app = Start-Process $Exe -PassThru; Start-Sleep -Milliseconds 2500; $app.Refresh()
+    (TargetSession $player.Id).SimpleAudioVolume.Mute = $false
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.8
+    Start-Sleep -Milliseconds 700   # the cap watch brings the target (0.80 > 40 %) back by itself
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Maximum volume: an app above its cap is brought back' ([math]::Abs($v - 0.4) -lt 0.011) ("target={0:N2} (expected 0.40)" -f $v)
+    $rc = SsCmd @('--set', 'powershell', '30'); Start-Sleep -Milliseconds 300
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Command line: --set changes the app volume' ($rc -eq 0 -and [math]::Abs($v - 0.3) -lt 0.011) ("exit=$rc, target={0:N2} (expected 0.30)" -f $v)
+    $rc = SsCmd @('--set', 'powershell.exe', '90'); Start-Sleep -Milliseconds 300
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Maximum volume: --set stops at the cap' ($rc -eq 0 -and [math]::Abs($v - 0.4) -lt 0.011) ("exit=$rc, target={0:N2} (expected 0.40)" -f $v)
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 0.35; Start-Sleep -Milliseconds 300
+    [Kb]::Down($VK_SHIFT); [Kb]::Press($VK_VOL_UP); [Kb]::Up($VK_SHIFT); Start-Sleep -Milliseconds 500
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Maximum volume: a shortcut stops at the cap' ([math]::Abs($v - 0.4) -lt 0.011) ("target={0:N2} (expected 0.40, not 0.45)" -f $v)
+    (TargetSession $player.Id).SimpleAudioVolume.Volume = 1.0; Start-Sleep -Milliseconds 800
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Maximum volume: raising it from outside is undone' ([math]::Abs($v - 0.4) -lt 0.011) ("target={0:N2} (expected 0.40)" -f $v)
+    $rc = SsCmd @('--mute', 'powershell.exe'); Start-Sleep -Milliseconds 300
+    $mu1 = (TargetSession $player.Id).SimpleAudioVolume.Mute
+    $rc2 = SsCmd @('--unmute', 'powershell.exe'); Start-Sleep -Milliseconds 300
+    $mu2 = (TargetSession $player.Id).SimpleAudioVolume.Mute
+    Check 'Command line: --mute and --unmute' ($rc -eq 0 -and $rc2 -eq 0 -and $mu1 -and -not $mu2) "exit $rc/$rc2, muted=$mu1 then $mu2"
+    Check 'Command line: unknown app gives exit code 3' ((SsCmd @('--set', 'no-such-app.exe', '10')) -eq 3) 'not playing'
+    Check 'Command line: bad arguments give exit code 1' (((SsCmd @('--set', 'powershell.exe', '150')) -eq 1) -and ((SsCmd @('--frobnicate')) -eq 1)) 'usage errors'
+    $rc = SsCmd @('--profile', 'E2E profile'); Start-Sleep -Milliseconds 300
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Profile: --profile applies the volumes' ($rc -eq 0 -and [math]::Abs($v - 0.25) -lt 0.011) ("exit=$rc, target={0:N2} (expected 0.25)" -f $v)
+    Check 'Profile: an unknown profile gives exit code 3' ((SsCmd @('--profile', 'nope')) -eq 3) 'no such profile'
+    # Mute everything: the shortcut mutes the target, the second press restores it; the master is untouched.
+    (TargetSession $player.Id).SimpleAudioVolume.Mute = $false
+    $m0 = (Master).MasterVolumeLevelScalar; $mm0 = (Master).Mute
+    Chord 0x73; Start-Sleep -Milliseconds 300
+    $mu1 = (TargetSession $player.Id).SimpleAudioVolume.Mute; $mmaster1 = (Master).Mute
+    Chord 0x73; Start-Sleep -Milliseconds 300
+    $mu2 = (TargetSession $player.Id).SimpleAudioVolume.Mute
+    Check 'Mute everything: the shortcut mutes, the second press restores' ($mu1 -and -not $mu2 -and $mmaster1 -eq $mm0 -and [math]::Abs((Master).MasterVolumeLevelScalar - $m0) -lt 0.005) "muted=$mu1 then $mu2, master mute unchanged=$($mmaster1 -eq $mm0)"
+    (TargetSession $player.Id).SimpleAudioVolume.Mute = $true
+    $rc = SsCmd @('--mute-all'); Start-Sleep -Milliseconds 300
+    $rc2 = SsCmd @('--mute-all'); Start-Sleep -Milliseconds 300
+    $mu3 = (TargetSession $player.Id).SimpleAudioVolume.Mute
+    Check 'Mute everything: --mute-all restores a previously muted app as it was' ($rc -eq 0 -and $rc2 -eq 0 -and $mu3) "exit $rc/$rc2, still muted=$mu3"
+    (TargetSession $player.Id).SimpleAudioVolume.Mute = $false
+    # Competitive mode through the command line: refused except its own toggle
+    $rc = SsCmd @('--toggle-competitive'); Start-Sleep -Milliseconds 600
+    $rcRefused = SsCmd @('--set', 'powershell.exe', '20'); Start-Sleep -Milliseconds 300
+    $v = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    $rcBack = SsCmd @('--toggle-competitive'); Start-Sleep -Milliseconds 600
+    $rcOk = SsCmd @('--set', 'powershell.exe', '20'); Start-Sleep -Milliseconds 300
+    $v2 = (TargetSession $player.Id).SimpleAudioVolume.Volume
+    Check 'Command line: refused (exit 4) in competitive mode, accepted again after the toggle' ($rc -eq 0 -and $rcRefused -eq 4 -and [math]::Abs($v - 0.25) -lt 0.011 -and $rcBack -eq 0 -and $rcOk -eq 0 -and [math]::Abs($v2 - 0.2) -lt 0.011) ("exit $rc/$rcRefused/$rcBack/$rcOk, target {0:N2} then {1:N2}" -f $v, $v2)
+
     # 15. Tray menu (WPF flyout): opens above the taskbar, closes on Escape and on an outside click, keyboard drives it.
     Stop-Process -Id $app.Id -Force; $app.WaitForExit(3000) | Out-Null
     @'

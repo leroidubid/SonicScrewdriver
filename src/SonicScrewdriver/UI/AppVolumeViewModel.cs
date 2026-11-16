@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 using SonicScrewdriver.Audio;
+using SonicScrewdriver.Media;
 
 namespace SonicScrewdriver.UI;
 
@@ -49,12 +50,41 @@ public sealed class AppVolumeViewModel : ObservableObject
     }
     public ImageSource? Icon => _icon;
 
+    private string _nowPlaying = "";
+    private bool _isPlaying;
+
+    /// <summary>"Artist — Title" of what the app plays; empty hides the line and its transport buttons.</summary>
+    public string NowPlayingText
+    {
+        get => _nowPlaying;
+        private set { if (value != _nowPlaying) { _nowPlaying = value; Raise(); Raise(nameof(HasNowPlaying)); } }
+    }
+
+    public bool HasNowPlaying => _nowPlaying.Length > 0;
+
+    /// <summary>Segoe MDL2 glyph of the Play/Pause button: pause while playing.</summary>
+    public string PlayGlyph => _isPlaying ? "\uE103" : "\uE102";
+
+    public void SetNowPlaying(NowPlaying? info)
+    {
+        NowPlayingText = info?.Text ?? "";
+        var playing = info?.IsPlaying == true;
+        if (playing != _isPlaying) { _isPlaying = playing; Raise(nameof(PlayGlyph)); }
+    }
+
     public double Volume
     {
         get => _volume;
         set
         {
             var v = Math.Round(Math.Clamp(value, 0, 100));
+            var capped = Math.Round(_audio.Limits.Clamp(ExeName, (float)(v / 100)) * 100);
+            if (capped < v)
+            {
+                // Above the app's maximum: the slider goes back to it (raised later, WPF ignores a change made while it sets the value).
+                v = capped;
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => Raise(nameof(Volume)));
+            }
             if (v == _volume) return;
             _volume = v;
             _audio.SetVolume(ExeName, (float)(v / 100), DeviceId);

@@ -46,12 +46,46 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   arrow keys) and holds Settings, the Competitive mode switch and Quit.
 - **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
   lookups) for online games, with an optional shortcut to flip it. See [Games and anti-cheat](#games-and-anti-cheat).
-- **Light.** Around 20 MB of RAM and no CPU at idle; everything is event driven (the only timer is the optional
-  automatic competitive mode, a process-name check every 5 seconds, and only if you list a program).
+- **Volume profiles.** A named set of app volumes (and optionally the master volume), for example "Game night":
+  Discord 80, music 30, browser 10. Apply it from the tray menu, a shortcut, the command line, or automatically when
+  a program starts. Apps that are not playing are skipped.
+- **Automatic ducking.** Off by default. Mark a voice app (Discord, Teams...) and the apps to lower: while the voice
+  app speaks, the others go down to the level you choose, then come back to exactly what they were. A slider you move
+  in the meantime is respected.
+- **Streamer mode.** The reverse of ducking, off by default. Tick the apps to lower (a game, music...): while you speak
+  into the default microphone they go down to the level you choose, then come back to exactly what they were. A
+  threshold (5 % by default) ignores room noise, and delays avoid pumping on pauses. It works together with automatic
+  ducking: the levels always come back to what you had.
+- **Microphone.** A shortcut mutes and unmutes the default microphone (the tray icon turns grey while it is muted),
+  and the mixer can show the microphone's volume and mute.
+- **Mute everything.** One shortcut mutes every app, the next press restores each app's previous state exactly. The
+  Windows master volume is not touched.
+- **Maximum volume per app.** A cap for an app (a browser at 40 %): sliders, shortcuts, profiles and commands stop at
+  it, and an app that goes above it by itself is brought back.
+- **Remembered routing.** "Discord always on the headset, Spotify on the speakers": a rule is applied when the app's
+  sound starts, and skipped when the device is not plugged in.
+- **Output device priority.** An ordered list of devices (headset, then speakers, then monitor): when devices come
+  and go, the default output becomes the first one of the list that is plugged in. An output you pick by hand is kept
+  until the first plugged-in device of the list changes.
+- **Now playing.** Optionally, each mixer row shows the title and artist of what the app plays, with Previous,
+  Play/Pause and Next buttons (read only while the mixer is open).
+- **Command line.** `SonicScrewdriver.exe --set spotify.exe 30`, `--profile "Game night"`, `--toggle-competitive`...
+  for Stream Deck, Touch Portal or AutoHotkey. See [Command line](#command-line).
+- **Light.** Around 20 MB of RAM and no CPU at idle; everything is event driven. The only timers: the optional
+  automatic competitive mode and program-start profiles (a process-name check every 5 seconds, only if you list a
+  program), automatic ducking (a sound-level check ten times a second, only while a voice app is running) and
+  streamer mode (the same check on the microphone, only while it is on and an app is ticked).
+  Every one of the new observers (ducking, streamer mode, microphone, routing, output priority, now playing, the maximum-volume
+  watch) costs nothing when its feature is off, and stops in competitive mode.
 
 ## Settings
 
-Right-click the tray icon, then **Settings**. The window has one card per topic:
+Right-click the tray icon, then **Settings**. The window has three tabs (Ctrl+Tab or the arrow keys switch between
+them, and the window remembers the last one while the app runs), each made of one card per topic. **Save** applies
+the settings and keeps the window open (a short "Saved" appears, and Cancel becomes Close); **Save & exit**
+(Enter) applies them and closes the window.
+
+**Shortcuts** tab:
 
 - **Shortcuts**: each row is a modifier combination, the app it controls (a specific app, the foreground app or
   the output devices) and the volume step.
@@ -59,16 +93,72 @@ Right-click the tray icon, then **Settings**. The window has one card per topic:
   and a step. Duplicate combinations and combinations that Windows or another program already owns are refused.
 - **Output devices in the cycle**, and **Media keys** to choose which physical keys act as Vol+, Vol-, Mute, Play,
   Next and Previous.
-- **Hidden apps**: the apps hidden from the mixer, each with a **Show again** button.
+
+**Audio** tab:
+
+- **Volume profiles**: for each profile its apps and volumes (with "Add running apps" to capture the current levels),
+  an optional master volume, an optional shortcut and an optional program that applies it when it starts.
+- **Mute everything** and **Microphone**: the shortcut of each, and showing the microphone in the mixer.
+- **Automatic ducking**: the voice apps and the apps to lower, the level to lower to, the speaking threshold, and the
+  reaction and release delays. Off by default.
+- **Streamer mode**: the switch, the apps to lower while you speak (one tick per app, "Add running apps"), the level to
+  lower to (30 % of their level by default), the microphone threshold, and the reaction and release delays. Off by
+  default.
+- **Output device priority**: the switch and the ordered list of devices (move up, move down, remove).
+- **Remembered routing**: rules "app on output device".
+- **Maximum volume per app**: a cap in percent per app.
+- **Now playing**: showing what is playing in the mixer.
+
+**General** tab:
+
 - **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
-  automatically. While it is on, the shortcut options are greyed out.
+  automatically. While it is on, the options it switches off are greyed out.
 - **General**: Start with Windows.
+- **Hidden apps**: the apps hidden from the mixer, each with a **Show again** button.
+
+Shortcuts, the microphone, ducking, streamer mode, routing, the device priority list, the now-playing line and the start-with-a-program
+trigger of profiles are greyed out while competitive mode is on; a red "Competitive mode" label marks the cards, and the
+tabs, that have greyed options.
 
 <p align="center">
-  <img src="docs/settings.png" alt="Settings: shortcuts, output devices and media keys" width="290">&nbsp;
-  <img src="docs/settings-mode.png" alt="Settings: competitive mode, its shortcut and the automatic list" width="290">&nbsp;
-  <img src="docs/settings-competitive.png" alt="Settings with Competitive mode on: the shortcut options are greyed out" width="290">
+  <img src="docs/settings-shortcuts.png" alt="Settings, Shortcuts tab" width="215">&nbsp;
+  <img src="docs/settings-audio.png" alt="Settings, Audio tab" width="215">&nbsp;
+  <img src="docs/settings-general.png" alt="Settings, General tab" width="215">&nbsp;
+  <img src="docs/settings-competitive.png" alt="Settings with Competitive mode on: greyed options and red labels on the cards and tabs" width="215">
 </p>
+
+## Command line
+
+A second launch of `SonicScrewdriver.exe` with a command hands it to the running instance (through a hidden window of
+the running app: no new background service) and exits with a code. The app must already be running; a command never
+starts it.
+
+| Command | Does |
+|---|---|
+| `--set <app> <0-100>` | Sets the app's volume (the maximum volume of the app still applies) and unmutes it when above 0 |
+| `--mute <app>` / `--unmute <app>` / `--toggle-mute <app>` | Mutes, unmutes or toggles the app |
+| `--profile "<name>"` | Applies a volume profile |
+| `--mute-all` | Mutes every app, or restores them (same as the shortcut) |
+| `--mic-mute` | Mutes or unmutes the default microphone |
+| `--toggle-competitive` | Switches competitive mode |
+
+`<app>` is the exe name, with or without `.exe` (`spotify` and `spotify.exe` are the same). Examples:
+
+```bash
+SonicScrewdriver.exe --set spotify.exe 30
+SonicScrewdriver.exe --mute discord
+SonicScrewdriver.exe --profile "Game night"
+```
+
+Exit codes: `0` done, `1` unknown command or bad arguments, `2` Sonic Screwdriver is not running, `3` the app (or the
+profile, or the microphone) was not found (an app is found only while it plays sound), `4` refused because competitive
+mode is on (only `--toggle-competitive` works then, like the shortcuts), `5` no answer. A short message is printed on
+the console that started the command (nothing is shown when started from a shortcut or a launcher).
+
+- **Stream Deck:** use an action that runs a program (for example *System > Open*, or a plugin that runs a command
+  line) with the full command, such as `"C:\Path\SonicScrewdriver.exe" --profile "Game night"`.
+- **Touch Portal:** use its action that runs an application, with the same path and arguments.
+- **AutoHotkey:** `Run '"C:\Path\SonicScrewdriver.exe" --set spotify.exe 30'`, or `RunWait` to read the exit code.
 
 ## Why
 
@@ -120,6 +210,7 @@ For online games with strict anti-cheat (Vanguard, FACEIT, EasyAntiCheat, BattlE
 | The on-screen display | The overlay shown after a shortcut |
 | Mouse wheel on the tray icon | Master volume with the wheel |
 | Lookups of other programs | App icons and friendly names (the exe name and a generic icon are shown instead) |
+| Observers and extra shortcuts | Automatic ducking, streamer mode, microphone shortcut and mixer section, remembered routing, the output priority list, the now-playing line, the maximum-volume watch, program-start profiles, the mute-everything and profile shortcuts, and the command line (except `--toggle-competitive`) |
 
 The mixer, the sliders, switching the default output and the physical media keys keep working. Competitive mode
 lowers the risk but does not remove it: quitting the app is the safest choice.
@@ -141,7 +232,8 @@ and use the tray menu, or quit the app.
 
 ## Security
 
-- The keyboard hook only looks at the six media keys; no other key is read or stored. The app does not
+- The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default);
+  no other key is read or stored. The app does not
   use the network and collects nothing.
 - Releases are built by GitHub Actions from the tagged commit, scanned with Microsoft Defender and
   [VirusTotal](https://www.virustotal.com) (the report links are added to the release notes), and come
