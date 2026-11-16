@@ -15,6 +15,12 @@ public partial class SettingsWindow : Window
     private readonly ObservableCollection<AutoProgramRowViewModel> _autoRows;
     private readonly List<(MediaKey Action, KeyCaptureBox Box)> _remapBoxes = new();
     private readonly bool _initialCompetitive;
+    private readonly Func<Hotkey, bool>? _hotkeyAvailable;
+    private readonly List<FreeRow> _freeRows = new();
+    private readonly ObservableCollection<string> _hidden;
+
+    /// <summary>Apps the user chose to show again in the mixer (applied on Save).</summary>
+    public List<string> ShownAgain { get; } = new();
 
     public event Action<AppSettings>? Saved;
 
@@ -29,9 +35,10 @@ public partial class SettingsWindow : Window
     /// <summary>Active output devices with a checkbox: included in the Output device cycle.</summary>
     public List<CycleDeviceItem> CycleDevices { get; }
 
-    public SettingsWindow(AppSettings current, IAudioSessionService audio)
+    public SettingsWindow(AppSettings current, IAudioSessionService audio, Func<Hotkey, bool>? hotkeyAvailable = null)
     {
         InitializeComponent();
+        _hotkeyAvailable = hotkeyAvailable;
         _rows = new ObservableCollection<BindingRowViewModel>(current.Bindings.Select(b => new BindingRowViewModel(b)));
 
         // Running apps as "Claude (claude.exe)"; configured exes not running stay as plain exe names.
@@ -62,6 +69,12 @@ public partial class SettingsWindow : Window
             .ToList();
 
         BuildRemapRows(current);
+        foreach (var f in current.FreeHotkeys) AddFreeRow(f);
+        ModeHotkeyBox.Validator = chord => FreeChordConflict(chord, null);
+        _hidden = new ObservableCollection<string>(current.HiddenApps);
+        _hidden.CollectionChanged += (_, _) => HiddenEmpty.Visibility = _hidden.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        HiddenList.ItemsSource = _hidden;
+        HiddenEmpty.Visibility = _hidden.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         DataContext = this;
         RowsList.ItemsSource = _rows;
         StartupBox.IsChecked = current.StartWithWindows;
@@ -125,6 +138,68 @@ public partial class SettingsWindow : Window
         }
     }
 
+    private sealed record FreeRow(KeyCaptureBox Box, ComboBox Action, ComboBox Target, TextBox Step);
+
+    private void AddFree_Click(object sender, RoutedEventArgs e) => AddFreeRow(null);
+
+    /// <summary>One row per free shortcut: chord box, action, target, step and Remove.</summary>
+    private void AddFreeRow(FreeHotkey? f)
+    {
+        var box = new KeyCaptureBox { Chord = true, Width = 170, Height = 32, Style = (Style)FindResource(typeof(TextBox)), Value = f?.Chord };
+        var action = new ComboBox
+        {
+            Width = 120, Height = 32, Margin = new Thickness(6, 0, 0, 0),
+            ItemsSource = RemapActions.Select(a => a.Label).ToList(),
+            SelectedIndex = Math.Max(0, Array.FindIndex(RemapActions, a => a.Action == (f?.Action ?? MediaKey.VolumeUp))),
+        };
+        var target = new ComboBox
+        {
+            IsEditable = true, Height = 32, MinWidth = 150, Margin = new Thickness(6, 0, 6, 0), ItemsSource = TargetChoices,
+            Text = f is null ? BindingRowViewModel.ForegroundLabel : BindingRowViewModel.TargetLabel(f.Target),
+            ToolTip = "\"Foreground app\", \"Output device\" or an executable name, e.g. spotify.exe",
+        };
+        var step = new TextBox { Width = 44, Height = 32, HorizontalContentAlignment = HorizontalAlignment.Center, Text = (f?.StepPercent ?? 5).ToString(), ToolTip = "Volume step per press (%)" };
+        var remove = new Button
+        {
+            Content = "\uE74D", FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"), ToolTip = "Remove",
+            Width = 32, Height = 32, Padding = new Thickness(0), Style = (Style)FindResource("FlatButton"),
+        };
+        var grid = new Grid();
+        for (var i = 0; i < 5; i++) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = i == 2 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+        var parts = new FrameworkElement[] { box, action, target, step, remove };
+        for (var i = 0; i < parts.Length; i++) { Grid.SetColumn(parts[i], i); grid.Children.Add(parts[i]); }
+        var border = new Border
+        {
+            Background = (System.Windows.Media.Brush)FindResource("RowBrush"), CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(10), Margin = new Thickness(0, 0, 0, 8), Child = grid,
+        };
+        var row = new FreeRow(box, action, target, step);
+        box.Validator = chord => FreeChordConflict(chord, row);
+        box.Rejected += message => FreeError.Text = message;
+        remove.Click += (_, _) => { FreePanel.Children.Remove(border); _freeRows.Remove(row); FreeError.Text = ""; };
+        FreePanel.Children.Add(border);
+        _freeRows.Add(row);
+    }
+
+    /// <summary>Error for a chord already used in this window or refused by Windows; null when it can be used.</summary>
+    private string? FreeChordConflict(string chord, FreeRow? self)
+    {
+        if (_freeRows.Any(r => r != self && string.Equals(r.Box.Value, chord, StringComparison.OrdinalIgnoreCase)))
+            return $"{chord} is already used by another free shortcut. Clear it first.";
+        if (self is not null && string.Equals(ModeHotkeyBox.Value, chord, StringComparison.OrdinalIgnoreCase))
+            return $"{chord} is the competitive mode shortcut. Choose another combination.";
+        if (self is not null && Hotkey.TryParse(chord, out var h) && _hotkeyAvailable?.Invoke(h) == false)
+            return $"{chord} is already used by Windows or another program. Choose another combination.";
+        return null;
+    }
+
+    private void ShowAgain_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string exe }) return;
+        _hidden.Remove(exe);
+        ShownAgain.Add(exe);
+    }
+
     private void ClearModeHotkey_Click(object sender, RoutedEventArgs e)
     {
         ModeHotkeyBox.Value = null;
@@ -155,6 +230,8 @@ public partial class SettingsWindow : Window
             StartWithWindows = StartupBox.IsChecked == true,
             CompetitiveMode = CompetitiveBox.IsChecked == true,
             CompetitiveHotkey = ModeHotkeyBox.Value,
+            FreeHotkeys = _freeRows.Select(r => new FreeHotkey(r.Box.Value ?? "", RemapActions[Math.Max(0, r.Action.SelectedIndex)].Action,
+                BindingRowViewModel.ParseTarget(r.Target.Text ?? ""), int.TryParse(r.Step.Text, out var step) ? step : 0)).ToList(),
             KeyRemaps = _remapBoxes.Where(r => r.Box.Value is not null).Select(r => new KeyRemap(r.Action, r.Box.Value!)).ToList(),
             AutoPrograms = _autoRows.Select(r => new AutoProgram(BindingRowViewModel.ExeFromLabel(r.ExeText), r.Enabled)).ToList(),
             // All checked is stored as "all" (empty), so devices plugged in later join the cycle.

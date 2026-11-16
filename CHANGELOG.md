@@ -23,11 +23,21 @@ First public release.
   numpad) act as Vol+, Vol−, Mute, Play/Pause, Next and Previous. A remapped key resolves through the same shortcuts
   as the real key; without a shortcut it is replaced by the real media key (sent with `SendInput`, tagged so the hook
   ignores it). The tray tooltip and menu list the remaps. Off in competitive mode.
+- **Free shortcuts:** bind any key combination (Ctrl, Alt, Shift or Win plus any key) to Vol+, Vol−, Mute,
+  Play/Pause, Next or Previous on a specific app, the foreground app or the output devices, with its own volume step.
+  They are registered with `RegisterHotKey` (no extra keyboard hook; Windows matches the combination), re-registered
+  when the settings change, and unregistered in competitive mode. Duplicate combinations and combinations already owned
+  by Windows or another program are refused with a message in the settings window, never a crash. Hand-edited settings
+  are validated and sanitized, and the tray tooltip and menu list them.
 - **Pass-through:** media keys without a modifier, or with an unbound combination, keep their normal
   Windows behavior.
 - **On-screen display:** shows the app icon, its name and the new level, without stealing focus.
 - **Device control:** set the default output device from the mixer, and route an app to another
   output (right-click it in the mixer).
+- **Pin or hide apps:** right-click an app in the mixer for **Pin to top** (pinned apps stay first in their device
+  list, in a stable order) or **Hide from the mixer**. Hidden apps are not listed but keep working with shortcuts, and
+  their volume is not touched. Both lists are stored as exe names in the settings file (validated on load), and a
+  **Hidden apps** card in the settings window lists the hidden apps with a **Show again** button.
 - **Mouse wheel:** over the tray icon for the master volume, and over a mixer row for that app.
 - **Tray tooltip and menu:** both show the current output device and the configured shortcuts. The right-click menu is
   a flyout in the same design as the mixer (Settings, Competitive mode, Quit) instead of the native Win32 menu: it opens
@@ -39,7 +49,7 @@ First public release.
   200 % scale) are hand-placed pixel art, so the screwdriver stays readable; larger sizes keep the smooth drawing. The
   red competitive-mode icon now turns only the green emitter and sound arcs red, keeping the steel and grip neutral.
 - **Settings window:** one card per topic, with modifier chips, switches, styled fields and a dark title bar.
-- **Installer:** per-user Inno Setup installer that needs no admin rights, with a Start menu
+- **Installer:** available in English, French, German, Spanish, Italian and Brazilian Portuguese. It is a per-user Inno Setup installer that needs no admin rights, with a Start menu
   shortcut, an optional start with Windows, a .NET 8 Desktop Runtime check and a clean uninstall.
   A portable single-file exe is also provided.
 - **Competitive mode:** one switch (tray menu or settings) turns off the keyboard hook, the on-screen display, the

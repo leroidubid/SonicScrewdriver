@@ -25,11 +25,20 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   F12). A remapped key works exactly like the real one: `Shift + F11` turns down the app bound to Shift, a bare
   `F11` lowers the master volume. A remapped key loses its usual job while the app runs, and the remaps are off in
   competitive mode (they need the keyboard hook).
+- **Free shortcuts.** Not limited to media keys: record any combination (Ctrl, Alt, Shift or Win plus any key, for
+  example `Ctrl + Alt + F8`) and choose what it does (Vol+, Vol−, Mute, Play/Pause, Next, Previous), to which app (a
+  specific app, the foreground app or the output devices) and the volume step. These use `RegisterHotKey`: Windows
+  matches the combination itself, so there is no extra keyboard hook, and the keys of a combination are taken from
+  other programs only while it is registered. A combination already used by Windows or another program is refused
+  with a message in the settings. Off in competitive mode.
 - **Media keys stay normal.** A media key without a modifier, or with an unbound combination, keeps
   its usual Windows behavior.
 - **On-screen display.** A small, non-intrusive overlay shows the app icon, its name and the new level.
 - **Device control.** Set the default output from the mixer, or right-click an app to send it to
   another output.
+- **Pin or hide apps.** Right-click an app in the mixer to **pin it to the top** of its device list (pinned apps keep
+  a stable order) or **hide it from the mixer**. A hidden app keeps working with your shortcuts and its volume is not
+  touched; the **Hidden apps** card in the settings lists them with a **Show again** button.
 - **Mouse wheel.** Scroll over the tray icon to change the master volume, or over a mixer row to
   change that app.
 - **At a glance.** The tray tooltip and the right-click menu show the current output device and your shortcuts. The
@@ -46,8 +55,11 @@ Right-click the tray icon, then **Settings**. The window has one card per topic:
 
 - **Shortcuts**: each row is a modifier combination, the app it controls (a specific app, the foreground app or
   the output devices) and the volume step.
+- **Free shortcuts**: any key combination bound to an action (Vol+, Vol−, Mute, Play/Pause, Next, Previous), a target
+  and a step. Duplicate combinations and combinations that Windows or another program already owns are refused.
 - **Output devices in the cycle**, and **Media keys** to choose which physical keys act as Vol+, Vol-, Mute, Play,
   Next and Previous.
+- **Hidden apps**: the apps hidden from the mixer, each with a **Show again** button.
 - **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
   automatically. While it is on, the shortcut options are greyed out.
 - **General**: Start with Windows.
@@ -71,7 +83,8 @@ the media keys and act on the app you choose.
    (the installer checks and links to it).
 2. From the Releases page, download either:
    - `SonicScrewdriver-Setup-x.y.z.exe`: per-user install, no admin rights, Start menu shortcut,
-     optional start with Windows, clean uninstall;
+     optional start with Windows, clean uninstall, available in English, French, German,
+     Spanish, Italian and Brazilian Portuguese (it follows the Windows display language);
    - or `SonicScrewdriver.exe`: portable, just run it.
 3. Right-click the tray icon, choose **Settings**, and add your shortcuts.
 

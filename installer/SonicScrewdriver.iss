@@ -1,4 +1,4 @@
-; Sonic Screwdriver installer (Inno Setup 6).
+﻿; Sonic Screwdriver installer (Inno Setup 6).
 ; Build: publish the exe first (see README), then:  iscc installer\SonicScrewdriver.iss /DAppVersion=1.0.0
 ; Per-user install, no administrator rights needed.
 
@@ -31,8 +31,38 @@ CloseApplications=force
 RestartApplications=no
 MinVersion=10.0.17763
 
+; The wizard follows the Windows display language when it is one of these, and asks otherwise.
+[Languages]
+Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+Name: "de"; MessagesFile: "compiler:Languages\German.isl"
+Name: "es"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "pt"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
+
+; Only the texts of this script: the standard wizard pages come with Inno Setup.
+[CustomMessages]
+en.StartWithWindows=Start {#AppName} with Windows
+en.LaunchApp=Launch {#AppName}
+en.NeedDotNet=%1 needs the .NET 8 Desktop Runtime, which is not installed.%n%nOpen the Microsoft download page now? (Install "Desktop Runtime x64", then run this setup again.)
+fr.StartWithWindows=Lancer {#AppName} au démarrage de Windows
+fr.LaunchApp=Lancer {#AppName}
+fr.NeedDotNet=%1 a besoin du .NET 8 Desktop Runtime, qui n'est pas installé.%n%nOuvrir la page de téléchargement de Microsoft maintenant ? (Installez « Desktop Runtime x64 », puis relancez cette installation.)
+de.StartWithWindows={#AppName} mit Windows starten
+de.LaunchApp={#AppName} starten
+de.NeedDotNet=%1 benötigt die .NET 8 Desktop Runtime, die nicht installiert ist.%n%nJetzt die Download-Seite von Microsoft öffnen? (Installieren Sie „Desktop Runtime x64“ und starten Sie dieses Setup danach erneut.)
+es.StartWithWindows=Iniciar {#AppName} con Windows
+es.LaunchApp=Iniciar {#AppName}
+es.NeedDotNet=%1 necesita .NET 8 Desktop Runtime, que no está instalado.%n%n¿Abrir ahora la página de descarga de Microsoft? (Instale «Desktop Runtime x64» y vuelva a ejecutar este instalador.)
+it.StartWithWindows=Avvia {#AppName} con Windows
+it.LaunchApp=Avvia {#AppName}
+it.NeedDotNet=%1 richiede .NET 8 Desktop Runtime, che non è installato.%n%nAprire ora la pagina di download di Microsoft? (Installa "Desktop Runtime x64", quindi riavvia questo programma di installazione.)
+pt.StartWithWindows=Iniciar o {#AppName} com o Windows
+pt.LaunchApp=Iniciar o {#AppName}
+pt.NeedDotNet=O %1 precisa do .NET 8 Desktop Runtime, que não está instalado.%n%nAbrir agora a página de download da Microsoft? (Instale "Desktop Runtime x64" e execute este instalador novamente.)
+
 [Tasks]
-Name: "startup"; Description: "Start {#AppName} with Windows"; Flags: unchecked
+Name: "startup"; Description: "{cm:StartWithWindows}"; Flags: unchecked
 
 [Files]
 Source: "..\publish\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
@@ -46,7 +76,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
   ValueData: """{app}\{#AppExe}"""; Tasks: startup
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchApp}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 const
@@ -69,9 +99,7 @@ begin
   Result := True;
   if not HasDesktopRuntime8() then
   begin
-    if MsgBox('{#AppName} needs the .NET 8 Desktop Runtime, which is not installed.' + #13#10 + #13#10 +
-              'Open the Microsoft download page now? (Install "Desktop Runtime x64", then run this setup again.)',
-              mbConfirmation, MB_YESNO) = IDYES then
+    if MsgBox(FmtMessage(CustomMessage('NeedDotNet'), ['{#AppName}']), mbConfirmation, MB_YESNO) = IDYES then
       ShellExec('open', DotNetUrl, '', '', SW_SHOWNORMAL, ewNoWait, ErrorCode);
     Result := False;
   end;

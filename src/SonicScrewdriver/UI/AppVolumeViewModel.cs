@@ -97,12 +97,12 @@ public sealed class DeviceViewModel : ObservableObject
     private bool _muted;
     private bool _isDefault;
 
-    public DeviceViewModel(IAudioSessionService audio, AudioDevice device)
+    public DeviceViewModel(IAudioSessionService audio, AudioDevice device, IReadOnlyList<string>? pinned = null, IReadOnlyCollection<string>? hidden = null)
     {
         _audio = audio;
         Id = device.Id;
         Name = device.Name;
-        Sync(device);
+        Sync(device, pinned, hidden);
     }
 
     public string Id { get; }
@@ -144,14 +144,14 @@ public sealed class DeviceViewModel : ObservableObject
     }
 
     /// <summary>Diff the device state and its app rows in place (no flicker, no lost slider drag).</summary>
-    public void Sync(AudioDevice device)
+    public void Sync(AudioDevice device, IReadOnlyList<string>? pinned = null, IReadOnlyCollection<string>? hidden = null)
     {
         IsDefault = device.IsDefault;
         var v = Math.Round(device.Volume * 100);
         if (v != _volume && !Dragging) { _volume = v; Raise(nameof(Volume)); }
         if (device.Muted != _muted) { _muted = device.Muted; Raise(nameof(Muted)); }
 
-        var live = device.Apps;
+        var live = AppArrangement.Arrange(device.Apps, a => a.ExeName, pinned ?? Array.Empty<string>(), hidden ?? Array.Empty<string>());
         for (var i = Apps.Count - 1; i >= 0; i--)
             if (!live.Any(a => string.Equals(a.ExeName, Apps[i].ExeName, StringComparison.OrdinalIgnoreCase)))
                 Apps.RemoveAt(i);
@@ -159,7 +159,12 @@ public sealed class DeviceViewModel : ObservableObject
         {
             var existing = Apps.FirstOrDefault(a => string.Equals(a.ExeName, live[i].ExeName, StringComparison.OrdinalIgnoreCase));
             if (existing is null) Apps.Insert(Math.Min(i, Apps.Count), new AppVolumeViewModel(_audio, Id, live[i]));
-            else existing.Sync(live[i]);
+            else
+            {
+                existing.Sync(live[i]);
+                var at = Apps.IndexOf(existing);
+                if (at != i && i < Apps.Count) Apps.Move(at, i); // pinned apps first
+            }
         }
     }
 }
