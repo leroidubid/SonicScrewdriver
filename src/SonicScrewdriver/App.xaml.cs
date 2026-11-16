@@ -456,6 +456,7 @@ public partial class App : Application
         if (on == _settings.CompetitiveMode) return;
         _settings.CompetitiveMode = on;
         ApplyMode();
+        PollAutoPrograms(); // the program-start profiles are watched again after leaving the mode (and the timer follows)
         TrySave();
         if (notify)
             _tray?.Notify("Competitive mode: " + (on ? "on" : "off"),
@@ -470,7 +471,7 @@ public partial class App : Application
     {
         var autoAny = _settings.AutoPrograms.Any(p => p.Enabled);
         // Profiles that start with a program use the same snapshot; never while competitive mode is on (no lookups).
-        var any = autoAny || (!_settings.CompetitiveMode && ProfileTriggers.Any(_settings.Profiles));
+        var any = AutoPollPolicy.Wanted(_settings);
         var running = any ? ProcessNames.Running() : new HashSet<string>();
         var program = AutoCompetitive.FirstRunning(_settings.AutoPrograms, running);
         if (_autoMode.Evaluate(program is not null, _settings.CompetitiveMode) is { } on)
@@ -487,7 +488,7 @@ public partial class App : Application
                 // An app often opens its audio session a few seconds after it starts: apply again 10 s later.
                 if (ApplyProfile(profile.Name)) { _retry.Add(profile); _profileRetry.Stop(); _profileRetry.Start(); }
             }
-        _autoTimer.IsEnabled = autoAny || (!_settings.CompetitiveMode && ProfileTriggers.Any(_settings.Profiles));
+        _autoTimer.IsEnabled = AutoPollPolicy.Wanted(_settings);
     }
 
     private void RegisterModeHotkey()
