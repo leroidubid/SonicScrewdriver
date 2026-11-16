@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Changelog - Sonic Screwdriver</title>
+  <meta name="description" content="The versions of Sonic Screwdriver and what changed in each: 1.1.0 and 1.0.0.">
+  <meta name="theme-color" content="#1b1b1d">
+  <link rel="icon" href="img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sonic Screwdriver">
+  <meta property="og:title" content="Changelog - Sonic Screwdriver">
+  <meta property="og:description" content="The versions of Sonic Screwdriver and what changed in each: 1.1.0 and 1.0.0.">
+  <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/changelog.html">
+  <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap bar">
+      <a class="brand" href="index.html"><img src="img/icon-64.png" width="36" height="36" alt="">Sonic Screwdriver</a>
+      <nav aria-label="Main">
+      <ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="command-line.html">Command line</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="https://github.com/leroidubid/SonicScrewdriver">GitHub</a></li>
+      </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap prose">
+    <h1>Changelog</h1>
+    <p>All notable changes to this project are documented here. The format follows <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and versions follow <a href="https://semver.org/">Semantic Versioning</a>. Source: <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/CHANGELOG.md">CHANGELOG.md</a>.</p>
+
+    <!-- keep in sync with CHANGELOG.md -->
+    <h2 id="v1.1.0">1.1.0 &ndash; 2026-11-16 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.1.0">release</a></h2>
+
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Command line:</strong> <code>SonicScrewdriver.exe --set &lt;app&gt; &lt;0-100&gt;</code>, <code>--mute</code>, <code>--unmute</code>, <code>--toggle-mute</code>, <code>--profile &lt;name&gt;</code>, <code>--mute-all</code>, <code>--mic-mute</code> and <code>--toggle-competitive</code>. A second launch hands the command to the running instance (WM_COPYDATA to a hidden message-only window: no pipe, no service) and exits with a code (0 done, 1 usage, 2 not running, 3 not found, 4 refused in competitive mode, 5 no answer) and a message on the parent console. Documented for Stream Deck, Touch Portal and AutoHotkey.</li>
+      <li><strong>Mute everything:</strong> one shortcut mutes every app (per-app mute: the Windows master and the levels are untouched; hidden apps are left out), the next press restores each previous mute state exactly.</li>
+      <li><strong>Maximum volume per app:</strong> a cap (1-100 %) applied to the slider, the shortcuts, the commands and the profiles; the slider snaps back; an app that goes above its cap by itself is brought back (a watch that runs only while a cap exists and not in competitive mode).</li>
+      <li><strong>Volume profiles:</strong> named sets of app volumes with an optional master volume, an optional shortcut and an optional program that applies the profile when it starts (same process-name snapshot as the automatic competitive mode). Listed in the tray menu, editable in the settings (with &ldquo;Add running apps&rdquo;).</li>
+      <li><strong>Now playing in the mixer</strong> (off by default): title, artist and Previous / Play-Pause / Next buttons in each row, from the Windows media sessions, read only while the mixer is open.</li>
+      <li><strong>Remembered routing:</strong> &ldquo;this app always plays on this output&rdquo;, applied when the app's session appears; a device that is not plugged in is skipped. Off in competitive mode.</li>
+      <li><strong>Output device priority list</strong> (off by default): the default output becomes the first plugged-in device of an ordered list when devices come and go; an output chosen by hand is kept until the top choice changes. Off in competitive mode.</li>
+      <li><strong>Microphone:</strong> a shortcut mutes and unmutes the default microphone (OSD, grey tray icon while muted) and the mixer can show its volume and mute. Follows Windows notifications only while one of these is on; off in competitive mode.</li>
+      <li><strong>Automatic ducking</strong> (off by default): a voice app's session peak level lowers the apps marked as ducked to a chosen percentage of their level, with attack and release delays, restores the exact levels, and respects a slider moved meanwhile. The meter runs only while a voice app has a session and not in competitive mode.</li>
+      <li><strong>Streamer mode</strong> (off by default): the reverse of ducking. While you speak into the default microphone (its peak level above a threshold, 5 % by default, with attack and release delays) the apps you ticked go down to a percentage of their level (30 % by default) and come back to the exact previous levels; a slider moved meanwhile is respected. It shares the ducking engine and a common ledger of levels, so with both active nothing is lowered twice and everything comes back to what you had. The microphone meter and its 100 ms timer exist only while the mode is on and an app is ticked; microphone changes (unplugged, new default) are handled; off in competitive mode.</li>
+      <li><strong>Settings in three tabs</strong> (Shortcuts, Audio, General) with a flat tab style, keyboard navigation (Ctrl+Tab, arrows), each tab scrolling on its own, the last tab remembered while the app runs, and a red &ldquo;Competitive mode&rdquo; label on the tabs that have greyed options.</li>
+      <li><strong>Save and Save &amp; exit</strong> buttons: Save applies and keeps the window open (&ldquo;Saved&rdquo; note, Cancel becomes Close), Save &amp; exit applies and closes (Enter). Errors keep the window open.</li>
+      <li>Hand-edited settings for all of these are validated and sanitized like the existing ones.</li>
+    </ul>
+
+    <h3>Changed</h3>
+    <ul>
+      <li><strong>Mixer:</strong> the device, each app and the &ldquo;now playing&rdquo; line have a very light background of their own (three tints), so the names are easier to tell apart. The settings window greys out what competitive mode switches off and marks each card and tab concerned with a red &ldquo;Competitive mode&rdquo; label.</li>
+    </ul>
+
+    <!-- keep in sync with CHANGELOG.md -->
+    <h2 id="v1.0.0">1.0.0 &ndash; 2026-11-16 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.0.0">release</a></h2>
+    <p>First public release.</p>
+
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Mixer:</strong> a tray-icon mixer that lists every active output device with its volume and mute, plus each app playing on it (icon, name, slider, mute). It updates live from Windows audio events.</li>
+      <li><strong>Media-key shortcuts:</strong> bind a modifier combination (Ctrl, Alt, Shift, Win) to a target; it then drives Vol+, Vol&minus;, Mute, Play/Pause, Next and Previous.
+        <ul>
+          <li><strong>A specific app</strong> (e.g. <code>spotify.exe</code>): volume, mute and media control for that app only. Changing the volume of a muted app unmutes it.</li>
+          <li><strong>The foreground app.</strong></li>
+          <li><strong>Output devices:</strong> Vol+ / Vol&minus; cycle the default output through a chosen list of devices (all enabled devices by default).</li>
+        </ul>
+      </li>
+      <li><strong>Remap media keys:</strong> choose which physical keys (F1&ndash;F24, Pause, Scroll Lock, Insert, Home, End, Page Up/Down, numpad) act as Vol+, Vol&minus;, Mute, Play/Pause, Next and Previous. A remapped key resolves through the same shortcuts as the real key; without a shortcut it is replaced by the real media key (sent with <code>SendInput</code>, tagged so the hook ignores it). The tray tooltip and menu list the remaps. Off in competitive mode.</li>
+      <li><strong>Free shortcuts:</strong> bind any key combination (Ctrl, Alt, Shift or Win plus any key) to Vol+, Vol&minus;, Mute, Play/Pause, Next or Previous on a specific app, the foreground app or the output devices, with its own volume step. They are registered with <code>RegisterHotKey</code> (no extra keyboard hook; Windows matches the combination), re-registered when the settings change, and unregistered in competitive mode. Duplicate combinations and combinations already owned by Windows or another program are refused with a message in the settings window, never a crash. Hand-edited settings are validated and sanitized, and the tray tooltip and menu list them.</li>
+      <li><strong>Pass-through:</strong> media keys without a modifier, or with an unbound combination, keep their normal Windows behavior.</li>
+      <li><strong>On-screen display:</strong> shows the app icon, its name and the new level, without stealing focus.</li>
+      <li><strong>Device control:</strong> set the default output device from the mixer, and route an app to another output (right-click it in the mixer).</li>
+      <li><strong>Pin or hide apps:</strong> right-click an app in the mixer for <strong>Pin to top</strong> (pinned apps stay first in their device list, in a stable order) or <strong>Hide from the mixer</strong>. Hidden apps are not listed but keep working with shortcuts, and their volume is not touched. Both lists are stored as exe names in the settings file (validated on load), and a <strong>Hidden apps</strong> card in the settings window lists the hidden apps with a <strong>Show again</strong> button.</li>
+      <li><strong>Mouse wheel:</strong> over the tray icon for the master volume, and over a mixer row for that app.</li>
+      <li><strong>Tray tooltip and menu:</strong> both show the current output device and the configured shortcuts. The right-click menu is a flyout in the same design as the mixer (Settings, Competitive mode, Quit) instead of the native Win32 menu: it opens inside the work area next to the taskbar, closes on Escape or an outside click, and works with the arrow keys.</li>
+      <li><strong>Settings window:</strong> apps are listed as &ldquo;Name (exe)&rdquo;, with the output-device cycle list and the Start with Windows option. Settings are saved to <code>%APPDATA%\SonicScrewdriver\settings.json</code>; hand-edited files are sanitized on load and corrupt files are backed up.</li>
+      <li><strong>Pixel-art tray icon:</strong> the 16, 20, 24 and 32 px frames of the icon (what the notification area uses at 100 to 200 % scale) are hand-placed pixel art, so the screwdriver stays readable; larger sizes keep the smooth drawing. The red competitive-mode icon now turns only the green emitter and sound arcs red, keeping the steel and grip neutral.</li>
+      <li><strong>Settings window:</strong> one card per topic, with modifier chips, switches, styled fields and a dark title bar.</li>
+      <li><strong>Installer:</strong> available in English, French, German, Spanish, Italian and Brazilian Portuguese. It is a per-user Inno Setup installer that needs no admin rights, with a Start menu shortcut, an optional start with Windows, a .NET 8 Desktop Runtime check and a clean uninstall. A portable single-file exe is also provided.</li>
+      <li><strong>Competitive mode:</strong> one switch (tray menu or settings) turns off the keyboard hook, the on-screen display, the mouse wheel on the tray icon and the lookups of other programs, so nothing can be mistaken for cheating software by an anti-cheat. The options it turns off are greyed out in the settings window.</li>
+      <li><strong>Competitive mode shortcut:</strong> an optional key combination (settings window) that switches competitive mode on and off, with a short notification. It uses <code>RegisterHotKey</code> instead of the keyboard hook, so it keeps working while the hook is uninstalled and no other key is ever seen.</li>
+      <li><strong>Automatic competitive mode:</strong> off by default. A list of programs (exe names, each with its own on/off tick) in the settings window turns competitive mode on while one of them runs and off when it exits, unless you switched it by hand. Detection reads the process list every 5 seconds without opening any process, and only while a program is ticked.</li>
+    </ul>
+
+    <h3>Reliability</h3>
+    <ul>
+      <li><strong>Keyboard hook:</strong> runs on its own thread, so a busy UI can never make Windows drop it. Each key press is latched from key-down to key-up, so releasing a modifier mid-press is handled correctly. Alt and Win presses are masked so they do not open the menu bar or the Start menu.</li>
+      <li><strong>Audio events:</strong> audio sessions are tracked through Windows notifications instead of polling. The app recovers when output devices change or are unplugged, and drops the sessions of apps that have closed.</li>
+      <li><strong>Startup:</strong> a startup failure is reported instead of leaving an invisible process; a locked settings file falls back to defaults; save errors are reported.</li>
+      <li><strong>Footprint:</strong> about 20 MB of RAM and no CPU use at idle.</li>
+      <li><strong>Mixer:</strong> changing the slider of a muted app unmutes it, a slider being dragged is no longer moved by refreshes, plugging a device only touches that device, microphones are ignored, and an app session is never listed twice.</li>
+      <li><strong>Play/Pause/Next:</strong> when an app has several media sessions (a browser and its installed web apps), the one that is playing is used.</li>
+      <li><strong>Minimal process access:</strong> the app no longer opens other programs with the right to read their memory (which anti-cheat software strips and may log). It reads their path with the minimal right, and app names and icons come from the file on disk.</li>
+    </ul>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p><a href="https://github.com/leroidubid/SonicScrewdriver">Source code on GitHub</a> &middot;
+      <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/LICENSE">License: MIT + Commons Clause</a>
+      (source-available, free to use and share, not to sell) &middot;
+      <a href="changelog.html">Changelog</a> &middot; <a href="games.html">Games</a></p>
+      <p>Not affiliated with or endorsed by the BBC.</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sonic Screwdriver - per-app volume mixer for Windows</title>
+  <meta name="description" content="A light Windows tray mixer with shortcuts on the media keys that act on one app: turn Spotify down while the game keeps its volume.">
+  <meta name="theme-color" content="#1b1b1d">
+  <link rel="icon" href="img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sonic Screwdriver">
+  <meta property="og:title" content="Sonic Screwdriver - per-app volume mixer for Windows">
+  <meta property="og:description" content="A light Windows tray mixer with shortcuts on the media keys that act on one app: turn Spotify down while the game keeps its volume.">
+  <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/">
+  <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Sonic Screwdriver",
+    "operatingSystem": "Windows 10, Windows 11",
+    "applicationCategory": "MultimediaApplication",
+    "license": "https://github.com/leroidubid/SonicScrewdriver/blob/main/LICENSE",
+    "downloadUrl": "https://github.com/leroidubid/SonicScrewdriver/releases/latest",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap bar">
+      <a class="brand" href="index.html"><img src="img/icon-64.png" width="36" height="36" alt="">Sonic Screwdriver</a>
+      <nav aria-label="Main">
+      <ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="command-line.html">Command line</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="https://github.com/leroidubid/SonicScrewdriver">GitHub</a></li>
+      </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap">
+      <div class="hero-text">
+        <h1>Per-app volume, on your media keys.</h1>
+        <p class="lead">Sonic Screwdriver is a light Windows tray mixer. Press <kbd>Shift</kbd> + <kbd>Vol&minus;</kbd> to
+        turn Spotify down while the game keeps its volume, <kbd>Ctrl</kbd> + <kbd>Mute</kbd> to silence the window in
+        front, <kbd>Alt</kbd> + <kbd>Vol+</kbd> to switch your headset to the speakers.</p>
+        <p class="cta">
+          <a class="button" id="download-button" href="https://github.com/leroidubid/SonicScrewdriver/releases/latest">Download for Windows<span class="ver" data-release-version hidden></span></a>
+          <a class="button secondary" href="download.html">Install options</a>
+        </p>
+        <p class="small muted">Windows 10 (1809 or later) and 11, 64-bit, needs the .NET 8 Desktop Runtime.
+        <span data-release-date-wrap hidden>Released <span data-release-date></span>.</span>
+        <span data-release-links hidden><a data-release-installer href="https://github.com/leroidubid/SonicScrewdriver/releases/latest">Installer</a> &middot;
+        <a data-release-portable href="https://github.com/leroidubid/SonicScrewdriver/releases/latest">Portable exe</a></span></p>
+      </div>
+      <div class="hero-shots">
+        <img src="img/mixer.png" width="360" height="508" alt="The tray mixer: each output device with its volume, and a slider and mute button for every app playing on it">
+        <img src="img/osd.png" width="241" height="92" alt="The on-screen display after a shortcut: the app icon, its name and the new volume">
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="why">
+      <h2 id="why">What it does</h2>
+      <ul class="cards">
+        <li class="card">
+          <h3>Shortcuts on one app</h3>
+          <p>A modifier plus a media key drives a specific app, the foreground window or your output devices. Plain media keys keep their usual job.</p>
+          <p><a href="features.html#shortcuts">About shortcuts</a></p>
+        </li>
+        <li class="card">
+          <h3>Competitive mode</h3>
+          <p>One switch turns off the keyboard hook, the overlay and the process lookups for online games with strict anti-cheat.</p>
+          <p><a href="games.html#competitive-mode">Games and anti-cheat</a></p>
+        </li>
+        <li class="card">
+          <h3>Profiles and ducking</h3>
+          <p>Save sets of app volumes such as &ldquo;Game night&rdquo;, and let a voice app automatically lower the others while it speaks.</p>
+          <p><a href="features.html#profiles">About profiles</a></p>
+        </li>
+        <li class="card">
+          <h3>Command line</h3>
+          <p>Set a volume, mute an app or apply a profile from Stream Deck, Touch Portal or AutoHotkey.</p>
+          <p><a href="command-line.html">Commands and exit codes</a></p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="wrap strip" aria-labelledby="light">
+      <h2 id="light">Light, and private</h2>
+      <p>Around 20 MB of RAM and no CPU at idle. It does not use the network and collects nothing. The keyboard hook only
+      looks at the six media keys. Windows may show a SmartScreen warning because the files are not code-signed:
+      <a href="download.html">how to verify a download</a>, and <a href="security.html">what to know about security</a>.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p><a href="https://github.com/leroidubid/SonicScrewdriver">Source code on GitHub</a> &middot;
+      <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/LICENSE">License: MIT + Commons Clause</a>
+      (source-available, free to use and share, not to sell) &middot;
+      <a href="changelog.html">Changelog</a> &middot; <a href="games.html">Games</a></p>
+      <p>Not affiliated with or endorsed by the BBC.</p>
+    </div>
+  </footer>
+</body>
+</html>
