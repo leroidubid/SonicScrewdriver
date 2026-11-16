@@ -15,6 +15,7 @@ public sealed class DuckLedger
     private sealed class Entry
     {
         public float Original, Applied;
+        public bool Pending; // lowered level still there, the restore failed while the app was running
         public readonly Dictionary<object, float> Factors = new();
     }
 
@@ -44,6 +45,7 @@ public sealed class DuckLedger
         if (_entries.TryGetValue(exe, out var entry))
         {
             entry.Factors[owner] = factor;
+            entry.Pending = false;
             Apply(exe, entry);
             return true;
         }
@@ -60,12 +62,28 @@ public sealed class DuckLedger
     public void Release(object owner, string exe)
     {
         if (!_entries.TryGetValue(exe, out var entry) || !entry.Factors.Remove(owner)) return;
-        if (entry.Factors.Count == 0) { _audio.SetVolume(exe, entry.Original); _entries.Remove(exe); }
+        if (entry.Factors.Count == 0) Finish(exe, entry);
         else Apply(exe, entry);
+    }
+
+    /// <summary>Tries again the restores that failed while their app was still running (a no-op when there are none).</summary>
+    public void RetryPending()
+    {
+        foreach (var (exe, entry) in _entries.Where(kv => kv.Value.Pending && kv.Value.Factors.Count == 0).ToList()) Finish(exe, entry);
+    }
+
+    /// <summary>The last owner is gone: back to the original, unless the user moved the slider or the app is gone.</summary>
+    private void Finish(string exe, Entry entry)
+    {
+        if (_audio.GetVolume(exe) is not { } current) { _entries.Remove(exe); return; } // the app has no session any more: nothing to restore
+        if (Math.Abs(current - entry.Applied) > Tolerance) { _entries.Remove(exe); return; } // the user moved it: their level stays
+        if (_audio.SetVolume(exe, entry.Original) || _audio.SetVolume(exe, entry.Original)) _entries.Remove(exe);
+        else entry.Pending = true; // the app is still there and the write failed twice: keep the entry for a later retry
     }
 
     private void Apply(string exe, Entry entry)
     {
+        if (_audio.GetVolume(exe) is { } now && Math.Abs(now - entry.Applied) > Tolerance) { _entries.Remove(exe); return; } // the user took over
         var target = entry.Original * entry.Factors.Values.Min();
         if (Math.Abs(target - entry.Applied) <= 0.0005f) return;
         if (_audio.SetVolume(exe, target)) entry.Applied = _audio.GetVolume(exe) ?? target;
@@ -159,6 +177,7 @@ public sealed class DuckingEngine
         foreach (var exe in _held) _ledger.Release(this, exe);
         _held.Clear();
         _letGo.Clear();
+        _ledger.RetryPending();
         Active = false;
         _loudSince = _quietSince = null;
     }

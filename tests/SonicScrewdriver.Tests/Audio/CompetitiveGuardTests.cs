@@ -111,3 +111,57 @@ public class CompetitiveGuardTests
         Assert.Equal(0.1f, a.Apps["spotify.exe"].Vol, 3);
     }
 }
+
+public class DuckLedgerRestoreTests
+{
+    private static DuckingSettings Cfg() => new(true, 30, 4, 0, 200, new() { new("discord.exe", true, false), new("spotify.exe", false, true) });
+
+    private static (FakeAudio Audio, DuckingEngine Engine) Lowered()
+    {
+        var a = new FakeAudio();
+        a.Apps["discord.exe"] = (0.9f, false);
+        a.Apps["spotify.exe"] = (0.8f, false);
+        a.Peaks["discord.exe"] = 0.5f;
+        var cfg = Cfg();
+        var e = new DuckingEngine(a, () => cfg);
+        e.Tick(0);
+        Assert.Equal(0.24f, a.Apps["spotify.exe"].Vol, 3);
+        return (a, e);
+    }
+
+    [Fact]
+    public void A_slider_moved_in_the_tick_where_the_voice_stops_is_not_overwritten()
+    {
+        var (a, e) = Lowered();
+        a.Apps["spotify.exe"] = (0.6f, false);          // the user moved it
+        a.Peaks["discord.exe"] = 0f;
+        e.Tick(100); e.Tick(400);                       // quiet long enough: restore
+        Assert.False(e.Active);
+        Assert.Equal(0.6f, a.Apps["spotify.exe"].Vol);
+    }
+
+    [Fact]
+    public void An_app_that_quit_while_lowered_is_dropped_from_the_ledger()
+    {
+        var (a, e) = Lowered();
+        a.Apps.Remove("spotify.exe");
+        e.Restore();
+        Assert.Empty(e.Originals);
+        a.Apps["spotify.exe"] = (0.8f, false);          // it comes back later at its own level: left alone
+        a.SetCalls.Clear();
+        e.Restore();
+        Assert.Empty(a.SetCalls);
+    }
+
+    [Fact]
+    public void A_failed_write_on_a_running_app_is_kept_and_retried()
+    {
+        var (a, e) = Lowered();
+        a.FailSets.Add("spotify.exe");
+        e.Restore();
+        Assert.Equal(0.24f, a.Apps["spotify.exe"].Vol, 3);   // still lowered, entry kept
+        a.FailSets.Clear();
+        e.Restore();                                          // next restore (ultimately the exit) retries
+        Assert.Equal(0.8f, a.Apps["spotify.exe"].Vol);
+    }
+}

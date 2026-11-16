@@ -11,6 +11,7 @@ namespace SonicScrewdriver.Tests.Actions;
 internal sealed class FakeAudio : IAudioSessionService
 {
     public Dictionary<string, (float Vol, bool Muted)> Apps { get; } = new();
+    public HashSet<string> FailSets { get; } = new();
     public List<(string Exe, float Vol)> SetCalls { get; } = new();
 
     public IReadOnlyList<AudioApp> GetApps() =>
@@ -37,7 +38,7 @@ internal sealed class FakeAudio : IAudioSessionService
     public event EventHandler? VolumesChanged { add { } remove { } }
     public bool SetVolume(string exe, float volume, string? deviceId = null)
     {
-        if (!Apps.ContainsKey(exe)) return false;
+        if (!Apps.ContainsKey(exe) || FailSets.Contains(exe)) return false;
         volume = Limits.Clamp(exe, volume);
         SetCalls.Add((exe, volume));
         Apps[exe] = (volume, Apps[exe].Muted);
