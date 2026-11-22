@@ -365,8 +365,7 @@ public partial class App : Application
     private void ApplyDevicePriorityNow()
     {
         var pick = _devicePriority.Apply(_audio, _settings.DevicePriority.Select(d => d.Id).ToList(), () => _settings.CompetitiveMode);
-        if (pick is not null && _audio.GetDevices().FirstOrDefault(d => d.Id == pick)?.Name is { } name)
-            _osd.Show(null, name, "Default output (priority list)");
+        if (pick is not null) _osd.Show(null, pick.Name, "Default output (priority list)");
     }
 
     // Any thread: wakes the UI thread, which evaluates once the burst of events is over.

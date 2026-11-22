@@ -24,16 +24,17 @@ public sealed class DevicePriorityPolicy
     }
 
     /// <summary>
-    /// One evaluation: makes the top plugged-in device the default when needed. Returns its id when the default changed,
-    /// null otherwise. Does nothing while <paramref name="blocked"/> says so (competitive mode).
+    /// One evaluation: makes the top plugged-in device the default when needed. Returns that device when the default
+    /// changed, null otherwise. Does nothing while <paramref name="blocked"/> says so (competitive mode). Devices are
+    /// read once (every read asks each session for its volume).
     /// </summary>
-    public string? Apply(IAudioSessionService audio, IReadOnlyList<string> order, Func<bool>? blocked = null)
+    public AudioDevice? Apply(IAudioSessionService audio, IReadOnlyList<string> order, Func<bool>? blocked = null)
     {
         if (blocked?.Invoke() == true) return null;
         var devices = audio.GetDevices();
         var pick = Evaluate(order, devices.Select(d => d.Id).ToList(), devices.FirstOrDefault(d => d.IsDefault)?.Id);
         if (pick is null) return null;
-        if (audio.SetDefaultDevice(pick)) return pick;
+        if (audio.SetDefaultDevice(pick)) return devices.First(d => d.Id == pick);
         Reset(); // try again on the next change
         return null;
     }
