@@ -41,6 +41,35 @@
     <p>All notable changes to this project are documented here. The format follows <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and versions follow <a href="https://semver.org/">Semantic Versioning</a>. Source: <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/CHANGELOG.md">CHANGELOG.md</a>.</p>
 
     <!-- keep in sync with CHANGELOG.md -->
+    <h2 id="v1.2.1">1.2.1 &ndash; 2026-11-22 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.2.1">release</a></h2>
+
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Error log:</strong> unexpected errors are written to <code>%APPDATA%\SonicScrewdriver\log.txt</code> (time, message and stack; about 100 KB at most). It stays on the machine and is meant for bug reports.</li>
+    </ul>
+
+    <h3>Fixed</h3>
+    <ul>
+      <li><strong>Media sessions:</strong> a media session that disappears while the app reads or subscribes to the list can no longer end the process; the same protection now covers the audio notifications and the keyboard hook.</li>
+    </ul>
+
+    <h3>Changed</h3>
+    <ul>
+      <li>Internal clean-ups (one hotkey registry, one device read for the output priority list), a safer release workflow and a Chocolatey package built from each stable release.</li>
+    </ul>
+
+    <h2 id="v1.2.0">1.2.0 &ndash; 2026-11-17 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.2.0">release</a></h2>
+
+    <h3>Added</h3>
+    <ul>
+      <li><strong>Website</strong> with the features, the download, the command line, competitive mode, the tested games and systems, the security notes and an FAQ.</li>
+    </ul>
+
+    <h3>Fixed</h3>
+    <ul>
+      <li>Competitive mode, exit, ducking, streamer mode, mute everything, audio devices, settings, command line, mixer position and installer fixes. The full list is in <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/CHANGELOG.md">CHANGELOG.md</a>.</li>
+    </ul>
+
     <h2 id="v1.1.0">1.1.0 &ndash; 2026-11-16 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.1.0">release</a></h2>
 
     <h3>Added</h3>
