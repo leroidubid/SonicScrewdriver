@@ -269,6 +269,9 @@ whether Competitive mode was on.
 - The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default);
   no other key is read or stored. The app does not
   use the network and collects nothing.
+- Unexpected errors are written to `%APPDATA%\SonicScrewdriver\log.txt` (time, message and stack of each error;
+  about 100 KB at most, the oldest entries are dropped). The file stays on your machine and holds no key, no volume
+  and no settings; delete it whenever you like, and attach it to a bug report if you wish.
 - Releases are built by GitHub Actions from the tagged commit, scanned with Microsoft Defender and
   [VirusTotal](https://www.virustotal.com) (the report links are added to the release notes), and come
   with `SHA256SUMS.txt`.

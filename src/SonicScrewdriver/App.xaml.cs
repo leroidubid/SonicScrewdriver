@@ -63,6 +63,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Errors outside the UI thread cannot be cancelled: write them to the log (the process may still end).
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => { if (args.ExceptionObject is Exception ex) ErrorLog.Default.Write("Unhandled", ex); };
+        TaskScheduler.UnobservedTaskException += (_, args) => { ErrorLog.Default.Write("Task", args.Exception); args.SetObserved(); };
+
         // A command line call (--set, --mute, ...) is parsed first: it never starts a second instance.
         Command? command = null;
         if (CommandLine.IsCommand(e.Args))
@@ -116,7 +120,7 @@ public partial class App : Application
         // Only once startup succeeded: keep running through unexpected UI exceptions.
         DispatcherUnhandledException += (_, args) =>
         {
-            System.Diagnostics.Debug.WriteLine(args.Exception);
+            ErrorLog.Default.Write("UI thread", args.Exception);
             args.Handled = true;
         };
 
@@ -571,7 +575,7 @@ public partial class App : Application
         Dispatcher.BeginInvoke(async () =>
         {
             try { await _dispatcher.ExecuteAsync(binding, key); }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+            catch (Exception ex) { ErrorLog.Default.Write("Shortcut action", ex); }
         });
 
     private void OpenSettings()
