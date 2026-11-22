@@ -4,13 +4,14 @@ using System.Text.RegularExpressions;
 namespace SonicScrewdriver.Update;
 
 /// <summary>A stable release that has what the updater needs: the installer and the checksum file, both on the project's GitHub release.</summary>
-public sealed record ReleaseInfo(Version Version, string Tag, string InstallerName, Uri InstallerUrl, Uri ChecksumsUrl);
+public sealed record ReleaseInfo(Version Version, string Tag, string InstallerName, Uri InstallerUrl, Uri ChecksumsUrl, Uri? ExeUrl = null);
 
 /// <summary>Reads the answer of the GitHub "latest release" API and the SHA256SUMS.txt of a release. No network here.</summary>
 public static class ReleaseParser
 {
     public const string Repo = "leroidubid/SonicScrewdriver";
     public const string ChecksumsName = "SHA256SUMS.txt";
+    public const string ExeName = "SonicScrewdriver.exe";
 
     private static readonly Regex TagPattern = new(@"^v(\d+\.\d+\.\d+)$", RegexOptions.Compiled);
 
@@ -36,7 +37,7 @@ public static class ReleaseParser
 
             var installerName = InstallerNameFor(version);
             var prefix = $"https://github.com/{repo}/releases/download/{tag}/";
-            Uri? installer = null, sums = null;
+            Uri? installer = null, sums = null, exe = null;
             foreach (var asset in assets.EnumerateArray())
             {
                 if (asset.ValueKind != JsonValueKind.Object) continue;
@@ -46,8 +47,9 @@ public static class ReleaseParser
                 if (url != prefix + name) continue;
                 if (name == installerName) installer = new Uri(url);
                 else if (name == ChecksumsName) sums = new Uri(url);
+                else if (name == ExeName) exe = new Uri(url);
             }
-            return installer is null || sums is null ? null : new ReleaseInfo(version, tag, installerName, installer, sums);
+            return installer is null || sums is null ? null : new ReleaseInfo(version, tag, installerName, installer, sums, exe);
         }
         catch (JsonException) { return null; }
         catch (UriFormatException) { return null; }

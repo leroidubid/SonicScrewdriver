@@ -41,6 +41,13 @@
     <p>All notable changes to this project are documented here. The format follows <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and versions follow <a href="https://semver.org/">Semantic Versioning</a>. Source: <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/CHANGELOG.md">CHANGELOG.md</a>.</p>
 
     <!-- keep in sync with CHANGELOG.md -->
+    <h2 id="v1.3.1">1.3.1 &ndash; 2026-11-22 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.3.1">release</a></h2>
+
+    <h3>Fixed</h3>
+    <ul>
+      <li><strong>Updates:</strong> a portable copy (an exe not set up by the installer) is now replaced in place: the checked <code>SonicScrewdriver.exe</code> of the release is downloaded, the running exe is renamed to <code>.old</code>, the new one takes its name and starts once the old process has ended. Before, the button ran the installer, which installed a second copy and left the portable exe on the old version. An exe in a folder that cannot be written reports it and stays as it was.</li>
+    </ul>
+
     <h2 id="v1.3.0">1.3.0 &ndash; 2026-11-22 <a class="small" href="https://github.com/leroidubid/SonicScrewdriver/releases/tag/v1.3.0">release</a></h2>
 
     <h3>Added</h3>

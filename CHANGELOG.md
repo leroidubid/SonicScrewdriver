@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-22
+
+### Fixed
+
+- **Updates:** a portable copy (an exe not set up by the installer) is now replaced in place: the checked
+  `SonicScrewdriver.exe` of the release is downloaded, the running exe is renamed to `.old`, the new one takes its name and
+  starts once the old process has ended (`--updated-from <pid>`, which also deletes the `.old` file). Before, the button ran
+  the installer, which installed a second copy and left the portable exe on the old version. An exe in a folder that cannot
+  be written reports it and stays as it was.
+
 ## [1.3.0] - 2026-11-22
 
 ### Added
