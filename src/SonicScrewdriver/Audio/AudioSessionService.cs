@@ -1,5 +1,6 @@
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
+using SonicScrewdriver.Settings;
 
 namespace SonicScrewdriver.Audio;
 
@@ -33,8 +34,9 @@ public sealed class AudioSessionService : IAudioSessionService, IDisposable
         _enumerator.RegisterEndpointNotificationCallback(_notifications);
     }
 
-    private void RaiseSessionsChanged() => SessionsChanged?.Invoke(this, EventArgs.Empty);
-    private void RaiseVolumesChanged() => VolumesChanged?.Invoke(this, EventArgs.Empty);
+    // Called from COM notification threads: a throwing subscriber must not end the process.
+    private void RaiseSessionsChanged() => ErrorLog.Default.Guard("Audio sessions", () => SessionsChanged?.Invoke(this, EventArgs.Empty));
+    private void RaiseVolumesChanged() => ErrorLog.Default.Guard("Audio volumes", () => VolumesChanged?.Invoke(this, EventArgs.Empty));
 
     private List<DeviceTracker> Devices
     {
