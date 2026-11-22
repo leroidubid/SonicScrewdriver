@@ -485,3 +485,6 @@ $RECYCLE.BIN/
 .superpowers/
 publish/
 claude/
+
+# graphify knowledge graph output
+graphify-out/
