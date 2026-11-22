@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-22
+
 ### Added
 
 - **Updates:** Settings, General, gets an Updates card. "Check for updates" asks GitHub for the latest stable release;
