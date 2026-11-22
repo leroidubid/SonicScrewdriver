@@ -202,10 +202,9 @@ break them: please [open an issue](https://github.com/leroidubid/SonicScrewdrive
 - **Media control:** Play/Pause, Next and Previous only reach apps that register with Windows media
   controls (Spotify, browsers, most players).
 - **Browsers:** all tabs and installed web apps of a browser share a single volume, because the browser
-  plays all their audio through one process, so Sonic Screwdriver cannot set one tab alone. Two ways around it: add a
-  browser extension that gives each tab its own volume, such as [Volume Manager](https://chromewebstore.google.com/detail/volume-manager/imhcgcnjkibjikdbdgnhclihigkooeaf) (Chrome) or
-  [Per-Tab Volume Control](https://addons.mozilla.org/en-US/firefox/addon/per-tab-volume-control-xpi/) (Firefox) (separate projects that Sonic Screwdriver neither includes nor has
-  tested), or play the game and the music in two different browsers, so that each one has its own entry in the mixer.
+  plays all their audio through one process, so Sonic Screwdriver cannot set one tab alone. A browser extension
+  can, or you can play in two different browsers: see the
+  [FAQ](https://leroidubid.github.io/SonicScrewdriver/faq.html#browser-tabs).
 - **Administrator windows:** when an elevated window has focus, Windows does not pass keys to the app
   unless it runs elevated too.
 - **Undocumented APIs:** changing the default device and routing an app to an output use undocumented
