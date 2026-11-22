@@ -93,8 +93,22 @@ public class CompetitiveGuardTests
         var order = new[] { "headset", "speakers" };
         Assert.Null(policy.Apply(a, order, () => true));
         Assert.Empty(a.DefaultCalls);
-        Assert.Equal("headset", policy.Apply(a, order, () => false)); // the blocked call did not consume the evaluation
+        Assert.Equal("headset", policy.Apply(a, order, () => false)?.Id); // the blocked call did not consume the evaluation
         Assert.Equal(new[] { "headset" }, a.DefaultCalls);
+    }
+
+    [Fact]
+    public void Device_priority_returns_the_picked_device_after_a_single_read()
+    {
+        var a = Audio();
+        a.DeviceList = new()
+        {
+            new("speakers", "Speakers", true, 1, false, Array.Empty<AudioApp>()),
+            new("headset", "Headset", false, 1, false, Array.Empty<AudioApp>()),
+        };
+        var picked = new DevicePriorityPolicy().Apply(a, new[] { "headset", "speakers" });
+        Assert.Equal("Headset", picked?.Name);
+        Assert.Equal(1, a.DeviceReads);
     }
 
     [Fact]

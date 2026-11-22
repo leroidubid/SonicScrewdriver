@@ -1,4 +1,5 @@
 using SonicScrewdriver.Input;
+using SonicScrewdriver.Settings;
 using Windows.Media.Control;
 
 namespace SonicScrewdriver.Media;
@@ -52,12 +53,17 @@ public sealed class MediaSessionService : IMediaSessionService
 
     private void OnSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender, SessionsChangedEventArgs args)
     {
-        if (_onChanged is null) return;
-        Resubscribe();
-        _onChanged?.Invoke();
+        // Windows thread-pool thread: a session that vanishes mid-walk must not end the process.
+        ErrorLog.Default.Guard("Media sessions", () =>
+        {
+            if (_onChanged is null) return;
+            Resubscribe();
+            _onChanged?.Invoke();
+        });
     }
 
-    private void OnSessionChanged(GlobalSystemMediaTransportControlsSession sender, object args) => _onChanged?.Invoke();
+    private void OnSessionChanged(GlobalSystemMediaTransportControlsSession sender, object args) =>
+        ErrorLog.Default.Guard("Media session", () => _onChanged?.Invoke());
 
     private void Resubscribe()
     {
