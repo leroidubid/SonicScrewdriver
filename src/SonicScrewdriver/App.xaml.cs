@@ -30,9 +30,9 @@ public partial class App : Application
     private MediaSessionService _media = null!;
     private OsdWindow _osd = null!;
     private KeyboardHook? _hook;
-    private GlobalHotkey? _modeHotkey;
-    private GlobalHotkeySet _freeHotkeys = null!;
-    private readonly ActionHotkeySet _actionHotkeys = new();
+    private HotkeyRegistry? _modeHotkey;
+    private readonly HotkeyRegistry _hotkeys = new(); // free hotkeys and named actions; the mode toggle has its own
+    private FreeHotkeyMap _freeMap = FreeHotkeyMap.Empty;
     private MuteAll _muteAll = null!;
     private LimitEnforcer _enforcer = null!;
     private DuckingEngine _ducking = null!;
@@ -62,6 +62,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Errors outside the UI thread cannot be cancelled: write them to the log (the process may still end).
+        AppDomain.CurrentDomain.UnhandledException += (_, args) => { if (args.ExceptionObject is Exception ex) ErrorLog.Default.Write("Unhandled", ex); };
+        TaskScheduler.UnobservedTaskException += (_, args) => { ErrorLog.Default.Write("Task", args.Exception); args.SetObserved(); };
 
         // A command line call (--set, --mute, ...) is parsed first: it never starts a second instance.
         Command? command = null;
@@ -116,7 +120,7 @@ public partial class App : Application
         // Only once startup succeeded: keep running through unexpected UI exceptions.
         DispatcherUnhandledException += (_, args) =>
         {
-            System.Diagnostics.Debug.WriteLine(args.Exception);
+            ErrorLog.Default.Write("UI thread", args.Exception);
             args.Handled = true;
         };
 
@@ -186,15 +190,13 @@ public partial class App : Application
         };
         _commandWindow = CommandChannel.CreateServer(args => CommandLine.Parse(args, out _) is { } c ? _runner.Run(c) : ExitCode.Usage);
 
-        _freeHotkeys = new GlobalHotkeySet();
-        _freeHotkeys.Pressed += entry => OnMediaAction(entry.Binding, entry.Action);
-        _actionHotkeys.Pressed += id => Dispatcher.BeginInvoke(() => OnActionHotkey(id));
+        _hotkeys.Pressed += OnHotkey;
         _hook = new KeyboardHook(() => _decider, OnMediaAction);
         ApplyMode(runtimeChange: false);
 
         // RegisterHotKey, not the keyboard hook: it keeps working while competitive mode has uninstalled the hook.
-        _modeHotkey = new GlobalHotkey();
-        _modeHotkey.Pressed += () => SetCompetitive(!_settings.CompetitiveMode, notify: true);
+        _modeHotkey = new HotkeyRegistry();
+        _modeHotkey.Pressed += _ => SetCompetitive(!_settings.CompetitiveMode, notify: true);
         RegisterModeHotkey();
 
         _autoTimer.Tick += (_, _) => PollAutoPrograms();
@@ -363,8 +365,7 @@ public partial class App : Application
     private void ApplyDevicePriorityNow()
     {
         var pick = _devicePriority.Apply(_audio, _settings.DevicePriority.Select(d => d.Id).ToList(), () => _settings.CompetitiveMode);
-        if (pick is not null && _audio.GetDevices().FirstOrDefault(d => d.Id == pick)?.Name is { } name)
-            _osd.Show(null, name, "Default output (priority list)");
+        if (pick is not null) _osd.Show(null, pick.Name, "Default output (priority list)");
     }
 
     // Any thread: wakes the UI thread, which evaluates once the burst of events is over.
@@ -426,6 +427,13 @@ public partial class App : Application
         return result is not null;
     }
 
+    private void OnHotkey(string id)
+    {
+        if (id.StartsWith(ActionIds.FreePrefix, StringComparison.Ordinal) && int.TryParse(id.AsSpan(ActionIds.FreePrefix.Length), out var i) && i < _freeMap.Entries.Count)
+            OnMediaAction(_freeMap.Entries[i].Binding, _freeMap.Entries[i].Action);
+        else Dispatcher.BeginInvoke(() => OnActionHotkey(id));
+    }
+
     private void OnActionHotkey(string id)
     {
         if (_settings.CompetitiveMode) return;
@@ -445,11 +453,15 @@ public partial class App : Application
         return true;
     }
 
-    /// <summary>Registers every RegisterHotKey shortcut (none while competitive mode is on).</summary>
+    /// <summary>
+    /// Registers every RegisterHotKey shortcut except the mode toggle (none while competitive mode is on: they are shortcuts).
+    /// A chord that Windows or another program already owns is reported and skipped, never fatal.
+    /// </summary>
     private void ApplyHotkeys()
     {
-        ApplyFreeHotkeys();
         var items = new List<(Hotkey, string)>();
+        _freeMap = _settings.CompetitiveMode ? FreeHotkeyMap.Empty : FreeHotkeyMap.From(_settings.FreeHotkeys);
+        for (var i = 0; i < _freeMap.Entries.Count; i++) items.Add((_freeMap.Entries[i].Hotkey, ActionIds.FreePrefix + i));
         if (!_settings.CompetitiveMode)
         {
             if (Hotkey.TryParse(_settings.MuteAllHotkey, out var muteAll)) items.Add((muteAll, ActionIds.MuteAll));
@@ -457,18 +469,7 @@ public partial class App : Application
             foreach (var p in _settings.Profiles)
                 if (Hotkey.TryParse(p.Hotkey, out var chord)) items.Add((chord, ActionIds.ProfilePrefix + p.Name));
         }
-        var failed = _actionHotkeys.Apply(items);
-        if (failed.Count > 0)
-            _tray?.Notify("Sonic Screwdriver", $"Shortcut {string.Join(", ", failed)} is already used by Windows or another program and was not registered.");
-    }
-
-    /// <summary>
-    /// Registers the free hotkeys with Windows (none while competitive mode is on: they are shortcuts).
-    /// A chord that Windows or another program already owns is reported and skipped, never fatal.
-    /// </summary>
-    private void ApplyFreeHotkeys()
-    {
-        var failed = _freeHotkeys.Apply(_settings.CompetitiveMode ? FreeHotkeyMap.Empty : FreeHotkeyMap.From(_settings.FreeHotkeys));
+        var failed = _hotkeys.Apply(items);
         if (failed.Count > 0)
             _tray?.Notify("Sonic Screwdriver", $"Shortcut {string.Join(", ", failed)} is already used by Windows or another program and was not registered.");
     }
@@ -519,7 +520,7 @@ public partial class App : Application
     {
         Hotkey? hotkey = Hotkey.TryParse(_settings.CompetitiveHotkey, out var h) ? h : null;
         _tray!.ModeHotkeyText = hotkey?.ToString();
-        if (!_modeHotkey!.Register(hotkey))
+        if (_modeHotkey!.Apply(hotkey is { } h2 ? new[] { (h2, "mode") } : Array.Empty<(Hotkey, string)>()).Count > 0)
             _tray?.Notify("Sonic Screwdriver", $"The shortcut {hotkey} for competitive mode is already used by another program.");
     }
 
@@ -571,7 +572,7 @@ public partial class App : Application
         Dispatcher.BeginInvoke(async () =>
         {
             try { await _dispatcher.ExecuteAsync(binding, key); }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine(ex); }
+            catch (Exception ex) { ErrorLog.Default.Write("Shortcut action", ex); }
         });
 
     private void OpenSettings()
@@ -581,7 +582,7 @@ public partial class App : Application
             _settingsWindow.Activate();
             return;
         }
-        _settingsWindow = new SettingsWindow(_settings, _audio, h => _actionHotkeys.Owns(h) || _freeHotkeys.IsAvailable(h));
+        _settingsWindow = new SettingsWindow(_settings, _audio, _hotkeys.IsAvailable);
         _settingsWindow.Saved += s =>
         {
             if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open
@@ -624,8 +625,7 @@ public partial class App : Application
         _mic?.Dispose();
         _hook?.Dispose();
         _modeHotkey?.Dispose();
-        _freeHotkeys?.Dispose();
-        _actionHotkeys.Dispose();
+        _hotkeys.Dispose();
         _tray?.Dispose();
         _audio?.Dispose();
         _showWait?.Unregister(null);
