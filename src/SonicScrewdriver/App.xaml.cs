@@ -9,6 +9,7 @@ using SonicScrewdriver.Interop;
 using SonicScrewdriver.Media;
 using SonicScrewdriver.Settings;
 using SonicScrewdriver.UI;
+using SonicScrewdriver.Update;
 
 namespace SonicScrewdriver;
 
@@ -126,6 +127,26 @@ public partial class App : Application
 
         // Once startup settles, give unused memory back to Windows.
         Dispatcher.BeginInvoke(MemoryTrim.Trim, System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+
+        if (_settings.CheckUpdatesAtStart) _ = CheckUpdateLaterAsync();
+    }
+
+    private ReleaseInfo? _availableUpdate;
+
+    /// <summary>Opt-in: one request 30 s after the start (never in competitive mode), and a notification when a newer release exists.</summary>
+    private async Task CheckUpdateLaterAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(30));
+            if (_settings.CompetitiveMode || !_settings.CheckUpdatesAtStart) return;
+            var release = await new UpdateService().CheckAsync();
+            if (release is null) return;
+            _availableUpdate = release;
+            _tray?.Notify("Update available", $"Sonic Screwdriver {release.Version} is available. Open Settings, General to install it.");
+        }
+        catch (UpdateException) { /* offline or rate-limited: the manual button reports it */ }
+        catch (Exception ex) { ErrorLog.Default.Write("Update check", ex); }
     }
 
     private void StartServices()
@@ -582,7 +603,7 @@ public partial class App : Application
             _settingsWindow.Activate();
             return;
         }
-        _settingsWindow = new SettingsWindow(_settings, _audio, _hotkeys.IsAvailable);
+        _settingsWindow = new SettingsWindow(_settings, _audio, _hotkeys.IsAvailable, _availableUpdate);
         _settingsWindow.Saved += s =>
         {
             if (!_settingsWindow.CompetitiveModeEdited) s.CompetitiveMode = _settings.CompetitiveMode; // keep a toggle made while the window was open

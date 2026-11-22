@@ -80,6 +80,9 @@ public sealed class AppSettings
     /// <summary>Streamer mode: lowers some apps while the user speaks into the microphone. Off by default and in competitive mode.</summary>
     public StreamerSettings Streamer { get; set; } = new();
 
+    /// <summary>Asks GitHub for a newer release shortly after the app starts (one request, a notification when there is one). Off by default; never in competitive mode.</summary>
+    public bool CheckUpdatesAtStart { get; set; }
+
     public static AppSettings CreateDefault() => new()
     {
         Bindings = { new KeyBinding(Modifiers.Ctrl, Target.Foreground, 5) },

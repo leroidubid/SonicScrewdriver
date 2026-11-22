@@ -43,7 +43,7 @@ public partial class SettingsWindow : Window
     /// <summary>Active output devices with a checkbox: included in the Output device cycle.</summary>
     public List<CycleDeviceItem> CycleDevices { get; }
 
-    public SettingsWindow(AppSettings current, IAudioSessionService audio, Func<Hotkey, bool>? hotkeyAvailable = null)
+    public SettingsWindow(AppSettings current, IAudioSessionService audio, Func<Hotkey, bool>? hotkeyAvailable = null, Update.ReleaseInfo? knownUpdate = null)
     {
         InitializeComponent();
         _hotkeyAvailable = hotkeyAvailable;
@@ -80,6 +80,7 @@ public partial class SettingsWindow : Window
         foreach (var f in current.FreeHotkeys) AddFreeRow(f);
         ModeHotkeyBox.Validator = chord => FreeChordConflict(chord, null);
         InitExtras(current, audio);
+        InitUpdates(current.CheckUpdatesAtStart, knownUpdate);
         _hidden = new ObservableCollection<string>(current.HiddenApps);
         _hidden.CollectionChanged += (_, _) => HiddenEmpty.Visibility = _hidden.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         HiddenList.ItemsSource = _hidden;
@@ -98,7 +99,7 @@ public partial class SettingsWindow : Window
         AddHandler(System.Windows.Controls.Primitives.Selector.SelectionChangedEvent, new SelectionChangedEventHandler((_, e) => { if (e.OriginalSource is UIElement { IsKeyboardFocusWithin: true } and not TabControl) MarkDirty(); }));
         AddHandler(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, new RoutedEventHandler((_, e) =>
         {
-            if (e.OriginalSource is Button b && (b == SaveButton || b == SaveExitButton || b == CancelButton)) return;
+            if (e.OriginalSource is Button b && (b == SaveButton || b == SaveExitButton || b == CancelButton || b == CheckUpdateButton || b == InstallUpdateButton)) return;
             MarkDirty();
         }));
         _savedTimer.Tick += (_, _) => { _savedTimer.Stop(); SavedText.Visibility = Visibility.Collapsed; };
@@ -148,6 +149,7 @@ public partial class SettingsWindow : Window
     private void ApplyCompetitiveState()
     {
         var shortcutsOn = CompetitiveBox.IsChecked != true;
+        RefreshUpdateButtons();
         if (_dimmed is null) BuildCompetitiveMarks();
         foreach (var part in _dimmed!) { part.IsEnabled = shortcutsOn; part.Opacity = shortcutsOn ? 1 : 0.4; }
         foreach (var badge in _badges.Concat(_tabMarks)) badge.Visibility = shortcutsOn ? Visibility.Collapsed : Visibility.Visible;
@@ -379,6 +381,7 @@ public partial class SettingsWindow : Window
                 : CycleDevices.Where(d => d.Included).Select(d => d.Id).ToList(),
         };
         ReadExtras(settings);
+        settings.CheckUpdatesAtStart = UpdatesAtStartBox.IsChecked == true;
         var errors = settings.Validate().ToList();
         errors.AddRange(ExtraErrors());
         if (CycleDevices.Count > 0 && CycleDevices.All(d => !d.Included))

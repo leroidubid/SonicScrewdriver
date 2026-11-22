@@ -52,7 +52,7 @@ shortcuts to one specific app, the foreground app or the output devices.
 * Competitive mode: one switch turns off the keyboard hook, the overlay and every observer, for online games with an anti-cheat.
 * Volume profiles, automatic ducking, a streamer mode driven by the microphone, a microphone shortcut, a maximum volume per app,
   remembered output routing and an output device priority list.
-* About 20 MB of RAM and no CPU at idle; no network use, nothing collected.
+* About 20 MB of RAM and no CPU at idle; no network use except the update check you start, nothing collected.
 
 The license is MIT with the Commons Clause (source-available): free to use, modify and share, not to sell.
 

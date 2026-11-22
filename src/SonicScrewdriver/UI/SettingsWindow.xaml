@@ -347,6 +347,23 @@
     </StackPanel>
 </Border>
 
+<Border Style="{StaticResource Card}">
+    <StackPanel>
+        <TextBlock Text="Updates" Style="{StaticResource CardTitle}"/>
+        <TextBlock x:Name="UpdateVersionText" Style="{StaticResource Hint}"/>
+        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+            <Button x:Name="CheckUpdateButton" Content="Check for updates" Style="{StaticResource FlatButton}" Padding="14,6" Click="CheckUpdate_Click"/>
+            <Button x:Name="InstallUpdateButton" Content="Install" Style="{StaticResource FlatButton}" Padding="14,6" Margin="8,0,0,0" Visibility="Collapsed" Click="InstallUpdate_Click"/>
+        </StackPanel>
+        <ProgressBar x:Name="UpdateProgress" Height="4" Margin="0,10,0,0" Minimum="0" Maximum="100" Visibility="Collapsed"/>
+        <TextBlock x:Name="UpdateStatus" Style="{StaticResource Hint}"/>
+        <CheckBox x:Name="UpdatesAtStartBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                  Content="Check at startup"/>
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="Off by default: the app makes no network request on its own. A check asks GitHub for the latest release (your address is visible to GitHub, nothing else is sent). Installing downloads the installer of that release, checks its SHA256 against the one published with it, then closes the app, updates it and starts it again. Nothing runs in competitive mode. Unsaved changes in this window are lost."/>
+    </StackPanel>
+</Border>
+
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Text="Hidden apps" Style="{StaticResource CardTitle}"/>

@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Updates:** Settings, General, gets an Updates card. "Check for updates" asks GitHub for the latest stable release;
+  "Install" downloads its installer, checks the SHA256 against the `SHA256SUMS.txt` published with the release, closes
+  the app, installs silently and starts the app again. "Check at startup" (off by default) makes one request 30 seconds
+  after the start and shows a notification when a release is newer. Nothing is requested in competitive mode. The only
+  data GitHub sees is the IP address and the fixed name `SonicScrewdriver`.
+
 ## [1.2.1] - 2026-11-22
 
 ### Added
