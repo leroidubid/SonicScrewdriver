@@ -52,7 +52,12 @@
     <p>The files are not code-signed. Click <strong>More info</strong>, then <strong>Run anyway</strong>. You can check the download against <code>SHA256SUMS.txt</code> and verify the build attestation: see <a href="download.html#verify">Verify your download</a>. A few antivirus engines also flagged an early build: <a href="security.html#false-positives">antivirus false positives</a>.</p>
 
     <h2 id="browser-tabs">Can I set the volume of one browser tab?</h2>
-    <p>No. All tabs and installed web apps of a browser share a single volume, because the browser plays all their audio through one process.</p>
+    <!-- keep in sync with README -->
+    <p>Not with Sonic Screwdriver: all tabs and installed web apps of a browser share a single volume, because the browser plays all their audio through one process. Two ways around it:</p>
+    <ul>
+      <li>Add a browser extension that gives each tab its own volume, such as <a href="https://chromewebstore.google.com/detail/volume-manager/imhcgcnjkibjikdbdgnhclihigkooeaf">Volume Manager</a> (Chrome) or <a href="https://addons.mozilla.org/en-US/firefox/addon/per-tab-volume-control-xpi/">Per-Tab Volume Control</a> (Firefox). They are separate projects that Sonic Screwdriver does not include and has not tested, and each has its own limits (for example, Volume Manager cannot toggle full screen on a tab it controls).</li>
+      <li>Play the game and the music in two different browsers: each one then has its own entry in the mixer.</li>
+    </ul>
 
     <h2 id="windows-11">Does it work on Windows 11?</h2>
     <p>It is built for Windows 10 and 11, but only Windows 10 22H2 (build 19045) has been tried by the author so far. Windows 11 is not tested yet. The default device change and the per-app output use undocumented Windows interfaces, so a new Windows build can break them: please <a href="https://github.com/leroidubid/SonicScrewdriver/issues">open an issue</a> with your Windows version. <a href="games.html#tested-systems">Tested systems</a>.</p>
