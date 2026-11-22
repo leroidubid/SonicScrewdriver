@@ -61,19 +61,26 @@ public sealed class UpdateService
     }
 
     /// <summary>Downloads the installer into a temporary folder and checks its SHA256; the file is deleted when the check fails.</summary>
-    public async Task<string> DownloadAsync(ReleaseInfo release, IProgress<int>? progress = null, CancellationToken ct = default)
+    public Task<string> DownloadAsync(ReleaseInfo release, IProgress<int>? progress = null, CancellationToken ct = default) =>
+        DownloadVerifiedAsync(release, release.InstallerUrl, release.InstallerName, progress, ct);
+
+    /// <summary>Same for the portable exe of the release (<see cref="ReleaseParser.ExeName"/>).</summary>
+    public Task<string> DownloadExeAsync(ReleaseInfo release, IProgress<int>? progress = null, CancellationToken ct = default) =>
+        DownloadVerifiedAsync(release, release.ExeUrl ?? throw new UpdateException("This release has no portable exe."), ReleaseParser.ExeName, progress, ct);
+
+    private async Task<string> DownloadVerifiedAsync(ReleaseInfo release, Uri fileUrl, string fileName, IProgress<int>? progress, CancellationToken ct)
     {
         var dir = Path.Combine(Path.GetTempPath(), "SonicScrewdriver-update");
         try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         Directory.CreateDirectory(dir);
-        var path = Path.Combine(dir, release.InstallerName);
+        var path = Path.Combine(dir, fileName);
         try
         {
             var sums = await ReadTextAsync(release.ChecksumsUrl, MaxChecksumBytes, ct);
-            var expected = ReleaseParser.HashFor(sums, release.InstallerName)
-                ?? throw new UpdateException($"{ReleaseParser.ChecksumsName} has no entry for {release.InstallerName}.");
+            var expected = ReleaseParser.HashFor(sums, fileName)
+                ?? throw new UpdateException($"{ReleaseParser.ChecksumsName} has no entry for {fileName}.");
 
-            using var response = await Http.GetAsync(release.InstallerUrl, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await Http.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode) throw new UpdateException($"The download failed ({(int)response.StatusCode}).");
             var total = response.Content.Headers.ContentLength;
             if (total > MaxInstallerBytes) throw new UpdateException("The installer is larger than expected. Nothing was installed.");
@@ -114,6 +121,35 @@ public sealed class UpdateService
     private static void Discard(string path)
     {
         try { File.Delete(path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+    }
+
+    /// <summary>
+    /// Portable copy: puts the checked exe where the running one is. A running exe can be renamed but not overwritten, so it
+    /// becomes <c>.old</c>, the new file takes its name, and the new exe is started with <c>--updated-from &lt;pid&gt;</c>:
+    /// it waits for this process to end (the single-instance mutex) and deletes the <c>.old</c> file.
+    /// </summary>
+    public static void ReplaceRunningExe(string newExePath)
+    {
+        var target = Environment.ProcessPath ?? throw new UpdateException("The path of the running exe is unknown.");
+        if (!string.Equals(Path.GetFileName(target), ReleaseParser.ExeName, StringComparison.OrdinalIgnoreCase))
+            throw new UpdateException("This is not the release exe (it was started by another program), so it cannot be replaced.");
+        var old = target + ".old";
+        try
+        {
+            if (File.Exists(old)) File.Delete(old);
+            File.Move(target, old);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new UpdateException($"Cannot replace {target}: {ex.Message} Move the exe to a folder you can write to, or download the new version by hand.");
+        }
+        try { File.Copy(newExePath, target); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try { File.Move(old, target); } catch (Exception) { /* the .old file stays next to the exe */ }
+            throw new UpdateException($"Could not write {target}: {ex.Message} The previous version was put back.");
+        }
+        Process.Start(new ProcessStartInfo(target, UpdateRelaunch.ArgumentFor(Environment.ProcessId)) { UseShellExecute = false })?.Dispose();
     }
 
     /// <summary>Starts the checked installer silently; it closes this app, replaces the exe and starts the app again.</summary>

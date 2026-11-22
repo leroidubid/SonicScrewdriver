@@ -69,8 +69,12 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (_, args) => { ErrorLog.Default.Write("Task", args.Exception); args.SetObserved(); };
 
         // A command line call (--set, --mute, ...) is parsed first: it never starts a second instance.
+        // Started by a portable update: the previous process must end before this one takes the single-instance mutex.
+        var afterUpdate = UpdateRelaunch.TryParse(e.Args, out var previousPid);
+        if (afterUpdate) UpdateRelaunch.WaitAndClean(previousPid);
+
         Command? command = null;
-        if (CommandLine.IsCommand(e.Args))
+        if (!afterUpdate && CommandLine.IsCommand(e.Args))
         {
             command = CommandLine.Parse(e.Args, out var usageError);
             if (command is null)

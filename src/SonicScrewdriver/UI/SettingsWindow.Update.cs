@@ -69,9 +69,15 @@ public partial class SettingsWindow
         _updateCancel = new CancellationTokenSource();
         try
         {
-            var path = await _updates.DownloadAsync(_release, new Progress<int>(p => UpdateProgress.Value = p), _updateCancel.Token);
+            var progress = new Progress<int>(p => UpdateProgress.Value = p);
+            // A copy that the installer did not put there (portable) is replaced in place: the installer would install a second copy.
+            var portable = !UpdateRelaunch.RunningFromInstall();
+            var path = portable
+                ? await _updates.DownloadExeAsync(_release, progress, _updateCancel.Token)
+                : await _updates.DownloadAsync(_release, progress, _updateCancel.Token);
             UpdateStatus.Text = "Checksum verified. Updating…";
-            UpdateService.Launch(path);
+            if (portable) UpdateService.ReplaceRunningExe(path);
+            else UpdateService.Launch(path);
             Application.Current.Shutdown(); // the installer replaces the exe and starts the app again
         }
         catch (UpdateException ex) { UpdateStatus.Text = ex.Message; }

@@ -96,3 +96,41 @@ public class ReleaseParserTests
     [Fact]
     public void Updates_are_off_by_default() => Assert.False(new SonicScrewdriver.Settings.AppSettings().CheckUpdatesAtStart);
 }
+
+public class UpdateRelaunchTests
+{
+    [Theory]
+    [InlineData(@"C:\Users\me\AppData\Local\Programs\SonicScrewdriver\SonicScrewdriver.exe", @"C:\Users\me\AppData\Local\Programs\SonicScrewdriver\", true)]
+    [InlineData(@"C:\Users\me\AppData\Local\Programs\SonicScrewdriver\SonicScrewdriver.exe", @"c:\users\ME\appdata\local\programs\sonicscrewdriver", true)]
+    [InlineData(@"D:\Tools\SonicScrewdriver.exe", @"C:\Users\me\AppData\Local\Programs\SonicScrewdriver", false)]
+    [InlineData(@"C:\Users\me\AppData\Local\Programs\SonicScrewdriver\sub\SonicScrewdriver.exe", @"C:\Users\me\AppData\Local\Programs\SonicScrewdriver", false)]
+    [InlineData(@"D:\Tools\SonicScrewdriver.exe", null, false)]
+    [InlineData(null, @"C:\x", false)]
+    public void An_installed_copy_is_the_one_in_the_install_folder(string? exe, string? location, bool expected) =>
+        Assert.Equal(expected, UpdateRelaunch.IsInstalledCopy(exe, location));
+
+    [Fact]
+    public void The_relaunch_argument_round_trips()
+    {
+        Assert.True(UpdateRelaunch.TryParse(UpdateRelaunch.ArgumentFor(4321).Split(' '), out var pid));
+        Assert.Equal(4321, pid);
+    }
+
+    [Theory]
+    [InlineData("--updated-from")]
+    [InlineData("--updated-from 0")]
+    [InlineData("--updated-from -5")]
+    [InlineData("--updated-from abc")]
+    [InlineData("--updated-from 5 --mute-all")]
+    [InlineData("--mute-all 5")]
+    public void Other_arguments_are_not_a_relaunch(string args) =>
+        Assert.False(UpdateRelaunch.TryParse(args.Split(' '), out _));
+
+    [Fact]
+    public void The_exe_asset_of_a_release_is_read_when_present()
+    {
+        var b = "https://github.com/leroidubid/SonicScrewdriver/releases/download/v1.3.1/";
+        var json = $$"""{"tag_name":"v1.3.1","assets":[{"name":"SonicScrewdriver-Setup-1.3.1.exe","browser_download_url":"{{b}}SonicScrewdriver-Setup-1.3.1.exe"},{"name":"SHA256SUMS.txt","browser_download_url":"{{b}}SHA256SUMS.txt"},{"name":"SonicScrewdriver.exe","browser_download_url":"{{b}}SonicScrewdriver.exe"}]}""";
+        Assert.Equal(b + "SonicScrewdriver.exe", ReleaseParser.ParseLatest(json)!.ExeUrl!.ToString());
+    }
+}

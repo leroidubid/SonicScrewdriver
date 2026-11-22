@@ -360,7 +360,7 @@
         <CheckBox x:Name="UpdatesAtStartBox" Style="{StaticResource SwitchToggle}" HorizontalAlignment="Left" Margin="0,12,0,0"
                   Content="Check at startup"/>
         <TextBlock Style="{StaticResource Hint}"
-                   Text="Off by default: the app makes no network request on its own. A check asks GitHub for the latest release (your address is visible to GitHub, nothing else is sent). Installing downloads the installer of that release, checks its SHA256 against the one published with it, then closes the app, updates it and starts it again. Nothing runs in competitive mode. Unsaved changes in this window are lost."/>
+                   Text="Off by default: the app makes no network request on its own. A check asks GitHub for the latest release (your address is visible to GitHub, nothing else is sent). Installing downloads the installer of that release, checks its SHA256 against the one published with it, then closes the app, updates it and starts it again. A copy that was not set up by the installer (portable exe) is replaced in place instead. Nothing runs in competitive mode. Unsaved changes in this window are lost."/>
     </StackPanel>
 </Border>
 
