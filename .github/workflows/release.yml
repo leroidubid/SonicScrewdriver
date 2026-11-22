@@ -118,6 +118,18 @@ jobs:
       tag: ${{ github.ref_name }}
     secrets: inherit
 
+  # Chocolatey community repository: builds the package of this release and pushes it (needs the CHOCO_API_KEY secret;
+  # without it the package is only kept as an artifact). Never for pre-release tags.
+  chocolatey:
+    needs: [release, scan]
+    if: ${{ !contains(github.ref_name, '-') }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/chocolatey.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
+
   # Opens a pull request on microsoft/winget-pkgs for the new version (official wingetcreate tool).
   # Needs the secret WINGET_TOKEN (classic token, public_repo scope) and a fork of winget-pkgs; skipped
   # without the secret and for pre-release tags (v1.2.0-rc1). The package must already exist in

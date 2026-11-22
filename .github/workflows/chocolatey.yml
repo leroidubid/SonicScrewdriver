@@ -1,0 +1,68 @@
+name: Chocolatey
+
+# Builds the Chocolatey package of a release (installer/make-choco-package.ps1) and pushes it to the community repository.
+# Runs after every stable release (called by release.yml; pre-release tags are skipped there), and by hand:
+# Actions > Chocolatey > Run workflow, with a release tag such as v1.2.0.
+#
+# One-time setup (done): the repository secret CHOCO_API_KEY holds the API key of the account on community.chocolatey.org.
+# Without the secret the package is only built and kept as an artifact of the run, so it can be pushed by hand:
+#   choco push sonicscrewdriver.<version>.nupkg --source https://push.chocolatey.org/ --api-key <key>
+# The first version of a package waits for a moderator; later versions go through the automatic checks (VirusTotal,
+# installation test) and a human only when those ask for it.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to package (for example v1.2.0)
+        required: true
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      CHOCO_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.tag }}   # the package scripts of the release itself
+
+      - name: Build the package
+        shell: pwsh
+        run: |
+          if ($env:TAG -notmatch '^v\d+\.\d+\.\d+$') { throw "$env:TAG is not a stable release tag (x.y.z): nothing to push." }
+          $v = $env:TAG.TrimStart('v')
+          # The hash comes from the SHA256SUMS.txt that the release workflow published next to the installer.
+          gh release download $env:TAG --repo $env:GITHUB_REPOSITORY --pattern SHA256SUMS.txt --dir dl
+          $line = Get-Content dl/SHA256SUMS.txt | Where-Object { $_ -match "SonicScrewdriver-Setup-$([regex]::Escape($v))\.exe$" } | Select-Object -First 1
+          if (-not $line) { throw "SHA256SUMS.txt has no line for the installer of $v" }
+          $sha = ($line -split '\s+')[0]
+          ./installer/make-choco-package.ps1 -Version $v -Sha256 $sha -OutDir choco -Repo $env:GITHUB_REPOSITORY
+          choco pack choco/sonicscrewdriver.nuspec --outputdirectory out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Keep the package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: chocolatey-package-${{ env.VERSION }}
+          path: out/*.nupkg
+
+      - name: Push to the community repository
+        if: ${{ env.CHOCO_API_KEY != '' }}
+        shell: pwsh
+        run: |
+          choco push "out/sonicscrewdriver.$env:VERSION.nupkg" --source https://push.chocolatey.org/ --api-key $env:CHOCO_API_KEY
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
