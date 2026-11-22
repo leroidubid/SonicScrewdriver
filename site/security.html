@@ -41,7 +41,7 @@
 
     <h2 id="what-it-reads">What it reads, what it sends</h2>
     <!-- keep in sync with README -->
-    <p>The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default); no other key is read or stored. The app does not use the network and collects nothing.</p>
+    <p>The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default); no other key is read or stored. The app makes no network request unless you ask for an update check (a button in Settings, or the optional check at startup), and collects nothing.</p>
     <p>The optional competitive-mode toggle shortcut and the free shortcuts do not use the hook at all: they use the Windows <code>RegisterHotKey</code> function, where Windows matches the combination itself. See <a href="games.html#toggle-shortcut">Games and anti-cheat</a>.</p>
     <p>To lower the footprint further, the app opens other programs with the minimal access right only: it reads their path, and app names and icons come from the file on disk. It does not request the right to read their memory (<a href="changelog.html">changelog 1.0.0</a>).</p>
 

@@ -113,7 +113,7 @@ the settings and keeps the window open (a short "Saved" appears, and Cancel beco
 
 - **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
   automatically. While it is on, the options it switches off are greyed out.
-- **General**: Start with Windows.
+- **General**: Start with Windows, and Updates (check for a newer release, install it, optional check at startup).
 - **Hidden apps**: the apps hidden from the mixer, each with a **Show again** button.
 
 Shortcuts, the microphone, ducking, streamer mode, routing, the device priority list, the now-playing line and the start-with-a-program
@@ -269,8 +269,9 @@ whether Competitive mode was on.
 ## Security
 
 - The keyboard hook only looks at the six media keys, and the keys you choose to remap to them (none by default);
-  no other key is read or stored. The app does not
-  use the network and collects nothing.
+  no other key is read or stored. The app makes
+  no network request on its own and collects nothing; the only request is the update check, which you start with a
+  button (or tick to run at startup, off by default) and which never runs in competitive mode.
 - Unexpected errors are written to `%APPDATA%\SonicScrewdriver\log.txt` (time, message and stack of each error;
   about 100 KB at most, the oldest entries are dropped). The file stays on your machine and holds no key, no volume
   and no settings; delete it whenever you like, and attach it to a bug report if you wish.
