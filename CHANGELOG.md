@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-22
+
 ### Added
 
 - **Error log:** unexpected errors are written to `%APPDATA%\SonicScrewdriver\log.txt` (time, message and stack; about
@@ -21,6 +23,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Internal clean-ups: one hotkey registry instead of three, one device read for the output priority list, shared
   ducking and streamer numbers, safer release workflow (version through the environment, tag must be on main), a
   workflow lint script (`tools/check-workflows.py`) and new tests.
+- **Chocolatey:** a package generator (`installer/make-choco-package.ps1`) and a workflow that builds the package of each
+  stable release from the published installer and its SHA256, and pushes it when the `CHOCO_API_KEY` secret is set.
 
 ## [1.2.0] - 2026-11-17
 
