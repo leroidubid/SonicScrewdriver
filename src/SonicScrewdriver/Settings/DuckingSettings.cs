@@ -12,7 +12,7 @@ public sealed record DuckApp(string ExeName, bool Voice, bool Ducked);
 /// </summary>
 public sealed record DuckingSettings(bool Enabled = false, int DuckToPercent = 30, int ThresholdPercent = 4, int AttackMs = 100, int ReleaseMs = 1500, List<DuckApp>? Apps = null)
 {
-    public const int MinThreshold = 1, MaxThreshold = 50, MaxAttackMs = 2000, MinReleaseMs = 200, MaxReleaseMs = 10000;
+    public const int MinThreshold = DuckNumbers.MinThreshold, MaxThreshold = DuckNumbers.MaxThreshold, MaxAttackMs = DuckNumbers.MaxAttackMs, MinReleaseMs = DuckNumbers.MinReleaseMs, MaxReleaseMs = DuckNumbers.MaxReleaseMs;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public List<DuckApp> AppList => Apps ?? new List<DuckApp>();
@@ -28,18 +28,15 @@ public sealed record DuckingSettings(bool Enabled = false, int DuckToPercent = 3
             var exe = Target.NormalizeExe(a?.ExeName ?? "");
             if (exe.Length > 0 && (a!.Voice || a.Ducked) && seen.Add(exe)) apps.Add(new DuckApp(exe, a.Voice, a.Ducked));
         }
-        return new DuckingSettings(d.Enabled, Math.Clamp(d.DuckToPercent, 0, 100), Math.Clamp(d.ThresholdPercent, MinThreshold, MaxThreshold),
-            Math.Clamp(d.AttackMs, 0, MaxAttackMs), Math.Clamp(d.ReleaseMs, MinReleaseMs, MaxReleaseMs), apps);
+        var n = DuckNumbers.Clamp(d.DuckToPercent, d.ThresholdPercent, d.AttackMs, d.ReleaseMs);
+        return new DuckingSettings(d.Enabled, n.To, n.Threshold, n.Attack, n.Release, apps);
     }
 
     /// <summary>User-facing errors; empty when valid.</summary>
     public IReadOnlyList<string> Validate()
     {
         var errors = new List<string>();
-        if (DuckToPercent is < 0 or > 100) errors.Add("Ducking: the level to lower to must be between 0 and 100 %.");
-        if (ThresholdPercent is < MinThreshold or > MaxThreshold) errors.Add($"Ducking: the speaking threshold must be between {MinThreshold} and {MaxThreshold} %.");
-        if (AttackMs is < 0 or > MaxAttackMs) errors.Add($"Ducking: the reaction delay must be between 0 and {MaxAttackMs} ms.");
-        if (ReleaseMs is < MinReleaseMs or > MaxReleaseMs) errors.Add($"Ducking: the release delay must be between {MinReleaseMs} and {MaxReleaseMs} ms.");
+        errors.AddRange(DuckNumbers.Check("Ducking", DuckToPercent, ThresholdPercent, AttackMs, ReleaseMs));
         var seen = new HashSet<string>();
         for (var i = 0; i < AppList.Count; i++)
         {

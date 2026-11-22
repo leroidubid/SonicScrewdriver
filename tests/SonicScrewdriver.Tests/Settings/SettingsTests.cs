@@ -68,6 +68,30 @@ public class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void A_1_2_0_ducking_and_streamer_section_loads_unchanged_and_is_written_with_the_same_names()
+    {
+        File.WriteAllText(PathFile, """
+        {
+          "Ducking": { "Enabled": true, "DuckToPercent": 25, "ThresholdPercent": 6, "AttackMs": 120, "ReleaseMs": 1800,
+            "Apps": [ { "ExeName": "discord.exe", "Voice": true, "Ducked": false }, { "ExeName": "spotify.exe", "Voice": false, "Ducked": true } ] },
+          "Streamer": { "Enabled": true, "DuckToPercent": 40, "ThresholdPercent": 8, "AttackMs": 200, "ReleaseMs": 900,
+            "Apps": [ { "ExeName": "spotify.exe", "Lowered": true }, { "ExeName": "chrome.exe", "Lowered": false } ] }
+        }
+        """);
+        var store = new SettingsStore(PathFile);
+        var s = store.Load();
+        Assert.Equal(new DuckingSettings(true, 25, 6, 120, 1800, new() { new("discord.exe", true, false), new("spotify.exe", false, true) }).AppList, s.Ducking.AppList);
+        Assert.Equal((true, 25, 6, 120, 1800), (s.Ducking.Enabled, s.Ducking.DuckToPercent, s.Ducking.ThresholdPercent, s.Ducking.AttackMs, s.Ducking.ReleaseMs));
+        Assert.Equal((true, 40, 8, 200, 900), (s.Streamer.Enabled, s.Streamer.DuckToPercent, s.Streamer.ThresholdPercent, s.Streamer.AttackMs, s.Streamer.ReleaseMs));
+        Assert.Equal(new[] { new StreamApp("spotify.exe", true), new StreamApp("chrome.exe", false) }, s.Streamer.AppList);
+
+        store.Save(s);
+        var text = File.ReadAllText(PathFile);
+        foreach (var name in new[] { "\"DuckToPercent\"", "\"ThresholdPercent\"", "\"AttackMs\"", "\"ReleaseMs\"", "\"Apps\"", "\"Voice\"", "\"Ducked\"", "\"Lowered\"" })
+            Assert.Contains(name, text);
+    }
+
+    [Fact]
     public void Load_sanitizes_hand_edited_rows()
     {
         File.WriteAllText(PathFile, """
