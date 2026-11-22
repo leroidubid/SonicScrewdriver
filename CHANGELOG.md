@@ -16,6 +16,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Media sessions:** a media session that disappears while the app reads or subscribes to the list can no longer end the
   process; the same protection now covers the audio notifications and the keyboard hook.
 
+### Changed
+
+- Internal clean-ups: one hotkey registry instead of three, one device read for the output priority list, shared
+  ducking and streamer numbers, safer release workflow (version through the environment, tag must be on main), a
+  workflow lint script (`tools/check-workflows.py`) and new tests.
+
 ## [1.2.0] - 2026-11-17
 
 ### Added
