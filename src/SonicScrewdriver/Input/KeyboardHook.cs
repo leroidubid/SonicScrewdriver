@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using SonicScrewdriver.Bindings;
+using SonicScrewdriver.Settings;
 using static SonicScrewdriver.Interop.NativeMethods;
 
 namespace SonicScrewdriver.Input;
@@ -78,6 +79,16 @@ public sealed class KeyboardHook : IDisposable
     }
 
     private IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        try { return HookCore(nCode, wParam, lParam); }
+        catch (Exception ex)
+        {
+            ErrorLog.Default.Write("Keyboard hook", ex);
+            return CallNextHookEx(_hook, nCode, wParam, lParam); // never let the hook throw: fall through to Windows
+        }
+    }
+
+    private IntPtr HookCore(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode >= 0)
         {
