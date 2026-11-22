@@ -43,7 +43,7 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
   change that app.
 - **At a glance.** The tray tooltip and the right-click menu show the current output device and your shortcuts. The
   menu is drawn like the mixer (same theme, above the taskbar, closes on Escape or a click elsewhere, usable with the
-  arrow keys) and holds Settings, the Competitive mode switch and Quit.
+  arrow keys) and holds the output and your shortcuts, the volume profiles, Settings, the Competitive mode switch and Quit.
 - **Competitive mode.** One switch turns off everything an anti-cheat could flag (shortcuts, overlay, process
   lookups) for online games, with an optional shortcut to flip it. See [Games and anti-cheat](#games-and-anti-cheat).
 - **Volume profiles.** A named set of app volumes (and optionally the master volume), for example "Game night":
@@ -81,7 +81,7 @@ whatever window is in front. `Alt + Vol+` switches your headset to the speakers.
 ## Settings
 
 Right-click the tray icon, then **Settings**. The window has three tabs (Ctrl+Tab or the arrow keys switch between
-them, and the window remembers the last one while the app runs), each made of one card per topic. **Save** applies
+them), each made of one card per topic. **Save** applies
 the settings and keeps the window open (a short "Saved" appears, and Cancel becomes Close); **Save & exit**
 (Enter) applies them and closes the window.
 
