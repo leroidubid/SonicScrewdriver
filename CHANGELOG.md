@@ -98,7 +98,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   comes back to what you had. The microphone meter and its 100 ms timer exist only while the mode is on and an app is
   ticked; microphone changes (unplugged, new default) are handled; off in competitive mode.
 - **Settings in three tabs** (Shortcuts, Audio, General) with a flat tab style, keyboard navigation (Ctrl+Tab, arrows),
-  each tab scrolling on its own, the last tab remembered while the app runs, and a red "Competitive mode" label on the
+  each tab scrolling on its own, and a red "Competitive mode" label on the
   tabs that have greyed options.
 - **Save and Save & exit** buttons: Save applies and keeps the window open ("Saved" note, Cancel becomes Close), Save & exit
   applies and closes (Enter). Errors keep the window open.
