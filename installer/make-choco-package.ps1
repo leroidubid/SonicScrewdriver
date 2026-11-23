@@ -54,7 +54,7 @@ shortcuts to one specific app, the foreground app or the output devices.
   remembered output routing and an output device priority list.
 * About 20 MB of RAM and no CPU at idle; no network use except the update check you start, nothing collected.
 
-The license is MIT with the Commons Clause (source-available): free to use, modify and share, not to sell.
+The license is GPL-3.0: free software to use, modify and share.
 
 The package downloads the installer of the release from GitHub and checks its SHA256. The installer is per-user: it needs no
 administrator rights of its own, so under an elevated `choco install` it installs for the account that runs it.

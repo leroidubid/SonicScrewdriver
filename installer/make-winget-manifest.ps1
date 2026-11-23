@@ -63,7 +63,7 @@ Publisher: $Publisher
 PublisherUrl: https://github.com/$owner
 PackageName: Sonic Screwdriver
 PackageUrl: $base
-License: MIT with Commons Clause
+License: GPL-3.0
 LicenseUrl: $base/blob/main/LICENSE
 ShortDescription: Per-app volume mixer for the Windows tray, with modifier + media key shortcuts.
 Description: >-
