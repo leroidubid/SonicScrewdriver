@@ -21,17 +21,12 @@ Tips:
 
 ## License of your contribution
 
-Sonic Screwdriver is under the [MIT + Commons Clause](LICENSE) license: free to use, modify and share,
-but not to sell without the maintainer's permission.
+Sonic Screwdriver is free software under the [GPL-3.0](LICENSE) license.
 
 By submitting a contribution (a pull request, a patch, or any code, documentation or asset), you agree
 that:
 
 1. You wrote it, or you have the right to submit it.
-2. It is licensed under the project's license, [MIT + Commons Clause](LICENSE).
-3. You grant the maintainer (Remi Chanoine) a perpetual, worldwide, non-exclusive, royalty-free and
-   irrevocable license to use, modify, sublicense and distribute your contribution under any terms,
-   including a different or commercial license. This allows the maintainer to authorise commercial use of
-   the project as a whole. You keep the copyright on your contribution.
+2. It is licensed under the project's license, [GPL-3.0](LICENSE). You keep the copyright on your contribution.
 
 Opening a pull request means you accept these terms.

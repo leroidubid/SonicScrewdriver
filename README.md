@@ -312,13 +312,14 @@ iscc installer/SonicScrewdriver.iss /DAppVersion=1.0.0
 
 ## License
 
-[MIT + Commons Clause](LICENSE): free to use, modify and share, but **not to sell**.
+[GPL-3.0](LICENSE): free software.
 
-- You can use it, at home or at work, modify it, fork it, and share it for free.
-- You cannot sell it, sell a modified version, or sell a service whose value comes mainly from it
-  (paid hosting, paid support, a paid product built around it) without my written permission.
-- Want to use it commercially? Contact me through my [GitHub profile](https://github.com/leroidubid).
-- This is a source-available license, not an OSI-approved open-source one.
+- You can use it, at home or at work, modify it, fork it, and share it.
+- If you pass on a copy, modified or not (even for a fee), you must give its source under the same license and keep
+  the copyright notice. A closed-source or relicensed copy is not allowed.
+- The name and the icon are not covered by the license: a modified or commercial version must not pass for the
+  official one.
+- Versions up to 1.4.0 were released under MIT + Commons Clause.
 
 Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 

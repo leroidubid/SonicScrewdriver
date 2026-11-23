@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **License:** from MIT + Commons Clause to GPL-3.0 (free software). A copy you pass on, modified or not, must come with
+  its source under the same license. The contributor terms no longer give the maintainer a right to relicense. Versions up
+  to 1.4.0 stay under their original license.
+
 ## [1.4.0] - 2026-11-23
 
 ### Added
