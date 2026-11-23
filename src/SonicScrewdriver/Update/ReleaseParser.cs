@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace SonicScrewdriver.Update;
 
 /// <summary>A stable release that has what the updater needs: the installer and the checksum file, both on the project's GitHub release.</summary>
-public sealed record ReleaseInfo(Version Version, string Tag, string InstallerName, Uri InstallerUrl, Uri ChecksumsUrl, Uri? ExeUrl = null);
+public sealed record ReleaseInfo(Version Version, string Tag, string InstallerName, Uri InstallerUrl, Uri ChecksumsUrl, Uri? ExeUrl = null, string? Notes = null);
 
 /// <summary>Reads the answer of the GitHub "latest release" API and the SHA256SUMS.txt of a release. No network here.</summary>
 public static class ReleaseParser
@@ -49,10 +49,27 @@ public static class ReleaseParser
                 else if (name == ChecksumsName) sums = new Uri(url);
                 else if (name == ExeName) exe = new Uri(url);
             }
-            return installer is null || sums is null ? null : new ReleaseInfo(version, tag, installerName, installer, sums, exe);
+            var notes = root.TryGetProperty("body", out var body) && body.ValueKind == JsonValueKind.String ? CleanNotes(body.GetString()) : null;
+            return installer is null || sums is null ? null : new ReleaseInfo(version, tag, installerName, installer, sums, exe, notes);
         }
         catch (JsonException) { return null; }
         catch (UriFormatException) { return null; }
+    }
+
+    private const int MaxNotesChars = 2000;
+
+    /// <summary>
+    /// The release notes as plain text for display: heading and bold marks removed, at most 2000 characters, null when empty.
+    /// The text is shown as is (never parsed as markup), so a hostile body can only be text.
+    /// </summary>
+    public static string? CleanNotes(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        var lines = body.Replace("\r", "").Split('\n')
+            .Select(l => Regex.Replace(l.TrimEnd(), @"^\s{0,3}#{1,6}\s*", "").Replace("**", "").Replace("`", ""));
+        var text = string.Join("\n", lines).Trim();
+        if (text.Length == 0) return null;
+        return text.Length <= MaxNotesChars ? text : text[..MaxNotesChars].TrimEnd() + "…";
     }
 
     private static bool Flag(JsonElement root, string name) =>

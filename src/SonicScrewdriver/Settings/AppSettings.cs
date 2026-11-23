@@ -83,6 +83,9 @@ public sealed class AppSettings
     /// <summary>Asks GitHub for a newer release shortly after the app starts (one request, a notification when there is one). Off by default; never in competitive mode.</summary>
     public bool CheckUpdatesAtStart { get; set; }
 
+    /// <summary>Version (x.y.z) the user chose to skip: the startup check no longer mentions it. The manual check still offers it.</summary>
+    public string SkippedUpdateVersion { get; set; } = "";
+
     public static AppSettings CreateDefault() => new()
     {
         Bindings = { new KeyBinding(Modifiers.Ctrl, Target.Foreground, 5) },

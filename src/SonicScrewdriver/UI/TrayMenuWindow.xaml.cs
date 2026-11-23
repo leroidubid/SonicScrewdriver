@@ -19,6 +19,8 @@ public partial class TrayMenuWindow : Window
     public event EventHandler? SettingsRequested;
     public event EventHandler? CompetitiveToggleRequested;
     public event EventHandler? QuitRequested;
+    /// <summary>The "update available" entry was chosen.</summary>
+    public event EventHandler? UpdateRequested;
     /// <summary>A profile entry was chosen; the argument is the profile name.</summary>
     public event EventHandler<string>? ProfileRequested;
 
@@ -57,11 +59,13 @@ public partial class TrayMenuWindow : Window
     /// the taskbar: above a bottom taskbar, below a top one, beside a side one. A second right-click on the icon just
     /// after the menu closed itself does not reopen it (the click that closed it was that same click).
     /// </summary>
-    public void ShowAt(Point cursor, Rect workArea, string device, IReadOnlyList<string> lines, bool competitive, string? hotkey, IReadOnlyList<string> profiles)
+    public void ShowAt(Point cursor, Rect workArea, string device, IReadOnlyList<string> lines, bool competitive, string? hotkey, IReadOnlyList<string> profiles, string? update = null)
     {
         if ((DateTime.UtcNow - _hiddenAt).TotalMilliseconds < 400) return;
 
         DeviceText.Text = "Output: " + device;
+        UpdateItem.Visibility = update is null ? Visibility.Collapsed : Visibility.Visible;
+        UpdateItemText.Text = update ?? "";
         Lines.Children.Clear();
         foreach (var line in lines)
             Lines.Children.Add(new TextBlock { Text = line, Foreground = (Brush)FindResource("SubtleBrush"), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -110,6 +114,7 @@ public partial class TrayMenuWindow : Window
     private void Settings_Click(object sender, RoutedEventArgs e) => Run(SettingsRequested);
     private void Competitive_Click(object sender, RoutedEventArgs e) => Run(CompetitiveToggleRequested);
     private void Quit_Click(object sender, RoutedEventArgs e) => Run(QuitRequested);
+    private void Update_Click(object sender, RoutedEventArgs e) => Run(UpdateRequested);
 
     private void Run(EventHandler? handler)
     {
