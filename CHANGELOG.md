@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Updates:** the Updates card shows the release notes of the new version before you install it (plain text, taken from the
+  GitHub release), and a "Skip this version" button. A skipped version is no longer mentioned by the startup check; the
+  manual check still offers it.
+- **Updates:** when the startup check finds a newer release, the tray menu gets an "Update x.y.z available" entry that opens
+  Settings, where the update is installed.
+
 ## [1.3.1] - 2026-11-22
 
 ### Fixed

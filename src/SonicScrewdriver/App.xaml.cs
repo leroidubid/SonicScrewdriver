@@ -145,9 +145,10 @@ public partial class App : Application
             await Task.Delay(TimeSpan.FromSeconds(30));
             if (_settings.CompetitiveMode || !_settings.CheckUpdatesAtStart) return;
             var release = await new UpdateService().CheckAsync();
-            if (release is null) return;
+            if (release is null || release.Version.ToString() == _settings.SkippedUpdateVersion) return;
             _availableUpdate = release;
-            _tray?.Notify("Update available", $"Sonic Screwdriver {release.Version} is available. Open Settings, General to install it.");
+            if (_tray is not null) _tray.UpdateText = $"Update {release.Version} available";
+            _tray?.Notify("Update available", $"Sonic Screwdriver {release.Version} is available. Click its entry in the tray menu to install it.");
         }
         catch (UpdateException) { /* offline or rate-limited: the manual button reports it */ }
         catch (Exception ex) { ErrorLog.Default.Write("Update check", ex); }
@@ -614,6 +615,7 @@ public partial class App : Application
             var modeChanged = s.CompetitiveMode != _settings.CompetitiveMode;
             if (_settingsWindow!.CompetitiveModeEdited) _autoMode.UserChanged(s.CompetitiveMode);
             s.PinnedApps = _settings.PinnedApps; // changed from the mixer, not from this window
+            s.SkippedUpdateVersion = _settings.SkippedUpdateVersion; // set by the Skip button, saved at once
             s.HiddenApps = _settings.HiddenApps.Except(_settingsWindow.ShownAgain, StringComparer.OrdinalIgnoreCase).ToList();
             _settings = s;
             RebuildDecider();
@@ -624,6 +626,13 @@ public partial class App : Application
             RegisterModeHotkey();
             PollAutoPrograms();
             TrySave(() => StartupRegistration.Set(s.StartWithWindows));
+        };
+        _settingsWindow.UpdateSkipped += version =>
+        {
+            _settings.SkippedUpdateVersion = version;
+            _availableUpdate = null;
+            if (_tray is not null) _tray.UpdateText = null;
+            TrySave();
         };
         _settingsWindow.Closed += (_, _) =>
         {

@@ -113,7 +113,7 @@ the settings and keeps the window open (a short "Saved" appears, and Cancel beco
 
 - **Competitive mode**: the switch, a shortcut to turn it on or off, and the games that turn it on
   automatically. While it is on, the options it switches off are greyed out.
-- **General**: Start with Windows, and Updates (check for a newer release, install it, optional check at startup).
+- **General**: Start with Windows, and Updates (check for a newer release, read its notes, install or skip it, optional check at startup with an entry in the tray menu).
 - **Hidden apps**: the apps hidden from the mixer, each with a **Show again** button.
 
 Shortcuts, the microphone, ducking, streamer mode, routing, the device priority list, the now-playing line and the start-with-a-program

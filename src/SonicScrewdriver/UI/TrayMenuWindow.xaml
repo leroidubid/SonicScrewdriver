@@ -10,6 +10,12 @@
             <TextBlock x:Name="DeviceText" Foreground="{StaticResource FgBrush}" FontSize="12" Margin="8,6,8,2"
                        TextTrimming="CharacterEllipsis"/>
             <StackPanel x:Name="Lines" Margin="8,0,8,4"/>
+            <Button x:Name="UpdateItem" AutomationProperties.Name="Update available" Style="{StaticResource MenuItemButton}" Click="Update_Click" Visibility="Collapsed">
+                <DockPanel>
+                    <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" Width="22" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="UpdateItemText" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+            </Button>
             <StackPanel x:Name="ProfilesPanel" Visibility="Collapsed"/>
             <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,4"/>
             <Button x:Name="SettingsItem" AutomationProperties.Name="Settings" Style="{StaticResource MenuItemButton}" Click="Settings_Click">

@@ -23,6 +23,37 @@ public class ReleaseParserTests
         Assert.Equal(new Version(1, 3, 0), r!.Version);
         Assert.Equal("SonicScrewdriver-Setup-1.3.0.exe", r.InstallerName);
         Assert.Equal(Base + "SHA256SUMS.txt", r.ChecksumsUrl.ToString());
+        Assert.Null(r.Notes);
+    }
+
+    [Fact]
+    public void The_release_body_becomes_plain_notes()
+    {
+        var json = Json().Replace("\"draft\"", "\"body\":\"### Added\\r\\n- **Updates** card with `notes`\\r\\n\",\"draft\"");
+        Assert.Equal("Added\n- Updates card with notes", ReleaseParser.ParseLatest(json)!.Notes);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  \r\n ## \r\n")]
+    public void Empty_notes_are_null(string? body) => Assert.Null(ReleaseParser.CleanNotes(body));
+
+    [Fact]
+    public void Long_notes_are_cut()
+    {
+        var notes = ReleaseParser.CleanNotes(new string('a', 5000))!;
+        Assert.Equal(2001, notes.Length);
+        Assert.EndsWith("…", notes);
+    }
+
+    [Fact]
+    public void The_skipped_version_is_kept_in_the_settings_file()
+    {
+        var settings = new SonicScrewdriver.Settings.AppSettings { SkippedUpdateVersion = "1.4.0" };
+        var back = System.Text.Json.JsonSerializer.Deserialize<SonicScrewdriver.Settings.AppSettings>(System.Text.Json.JsonSerializer.Serialize(settings))!;
+        Assert.Equal("1.4.0", back.SkippedUpdateVersion);
+        Assert.Equal("", new SonicScrewdriver.Settings.AppSettings().SkippedUpdateVersion);
     }
 
     [Theory]

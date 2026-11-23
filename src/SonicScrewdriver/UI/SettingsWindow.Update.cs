@@ -11,6 +11,9 @@ public partial class SettingsWindow
     private bool _updateBusy;
     private CancellationTokenSource? _updateCancel;
 
+    /// <summary>The user chose to skip a version (x.y.z): the startup check stops mentioning it.</summary>
+    public event Action<string>? UpdateSkipped;
+
     private void InitUpdates(bool atStart, ReleaseInfo? known)
     {
         UpdatesAtStartBox.IsChecked = atStart;
@@ -36,6 +39,26 @@ public partial class SettingsWindow
         UpdateStatus.Text = $"Version {release.Version} is available.";
         InstallUpdateButton.Content = $"Install {release.Version}";
         InstallUpdateButton.Visibility = Visibility.Visible;
+        SkipUpdateButton.Visibility = Visibility.Visible;
+        UpdateNotesText.Text = release.Notes ?? "";
+        UpdateNotesBox.Visibility = release.Notes is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void HideAvailable()
+    {
+        _release = null;
+        InstallUpdateButton.Visibility = Visibility.Collapsed;
+        SkipUpdateButton.Visibility = Visibility.Collapsed;
+        UpdateNotesBox.Visibility = Visibility.Collapsed;
+    }
+
+    private void SkipUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_release is null) return;
+        var version = _release.Version.ToString();
+        HideAvailable();
+        UpdateStatus.Text = $"Version {version} skipped. Check for updates still offers it.";
+        UpdateSkipped?.Invoke(version);
     }
 
     private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
@@ -47,7 +70,7 @@ public partial class SettingsWindow
         try
         {
             var release = await _updates.CheckAsync(_updateCancel.Token);
-            if (release is null) { _release = null; InstallUpdateButton.Visibility = Visibility.Collapsed; UpdateStatus.Text = "You have the latest version."; }
+            if (release is null) { HideAvailable(); UpdateStatus.Text = "You have the latest version."; }
             else ShowAvailable(release);
         }
         catch (UpdateException ex) { UpdateStatus.Text = ex.Message; }

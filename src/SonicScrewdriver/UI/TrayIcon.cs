@@ -48,6 +48,9 @@ public sealed class TrayIcon : IDisposable
     /// <summary>A profile was chosen in the menu.</summary>
     public event EventHandler<string>? ProfileRequested;
 
+    /// <summary>Text of the "update available" menu entry (null: no entry). Choosing it opens Settings, where the update is installed.</summary>
+    public string? UpdateText { get; set; }
+
     public event EventHandler? OpenFlyoutRequested;
     public event EventHandler? OpenSettingsRequested;
     public event EventHandler? ExitRequested;
@@ -207,11 +210,12 @@ public sealed class TrayIcon : IDisposable
             _menu.SettingsRequested += (_, _) => OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
             _menu.CompetitiveToggleRequested += (_, _) => CompetitiveModeToggled?.Invoke(this, !_competitive);
             _menu.ProfileRequested += (_, name) => ProfileRequested?.Invoke(this, name);
+            _menu.UpdateRequested += (_, _) => OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
             _menu.QuitRequested += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
         }
         // The cursor sits on the taskbar: the menu is placed inside the work area of that monitor.
         var (cursor, work) = MonitorArea.AtCursor();
-        _menu.ShowAt(cursor, work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText, ProfileNames?.Invoke() ?? Array.Empty<string>());
+        _menu.ShowAt(cursor, work, DefaultDeviceName?.Invoke() ?? "none", ActiveLines, _competitive, ModeHotkeyText, ProfileNames?.Invoke() ?? Array.Empty<string>(), UpdateText);
     }
 
     // --- Mouse wheel over the icon -------------------------------------------------------------
