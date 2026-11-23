@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code signing policy - Sonic Screwdriver</title>
+  <meta name="description" content="How releases of Sonic Screwdriver are code-signed: who commits, reviews and approves, and what the program does with your data.">
+  <meta name="theme-color" content="#1b1b1d">
+  <link rel="icon" href="img/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sonic Screwdriver">
+  <meta property="og:title" content="Code signing policy - Sonic Screwdriver">
+  <meta property="og:description" content="How releases of Sonic Screwdriver are code-signed: who commits, reviews and approves, and what the program does with your data.">
+  <meta property="og:url" content="https://leroidubid.github.io/SonicScrewdriver/code-signing.html">
+  <meta property="og:image" content="https://leroidubid.github.io/SonicScrewdriver/img/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap bar">
+      <a class="brand" href="index.html"><img src="img/icon-64.png" width="36" height="36" alt="">Sonic Screwdriver</a>
+      <nav aria-label="Main">
+      <ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="download.html">Download</a></li>
+        <li><a href="command-line.html">Command line</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="faq.html">FAQ</a></li>
+        <li><a href="https://github.com/leroidubid/SonicScrewdriver">GitHub</a></li>
+      </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <h1>Code signing policy</h1>
+    <p><strong>Status:</strong> releases are not code-signed yet. The project has applied to the SignPath Foundation for free code signing; this page describes how releases will be signed once it is granted. Until then, check a download with its <a href="security.html#attestation">build attestation</a> and <code>SHA256SUMS.txt</code>.</p>
+
+    <h2 id="what">What is signed</h2>
+    <p>The portable <code>SonicScrewdriver.exe</code> and the installer <code>SonicScrewdriver-Setup-x.y.z.exe</code> of each stable release. Only binaries built by the <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/.github/workflows/release.yml">release workflow</a> from the tagged commit of this repository are submitted. Pre-releases are not signed.</p>
+
+    <h2 id="roles">Roles</h2>
+    <ul>
+      <li><strong>Committers and reviewers:</strong> <a href="https://github.com/leroidubid">Remi Chanoine</a> (maintainer). Changes reach <code>main</code> through pull requests that need passing checks.</li>
+      <li><strong>Approvers:</strong> <a href="https://github.com/leroidubid">Remi Chanoine</a>. Every signing request is approved by hand in SignPath; nothing is signed automatically.</li>
+    </ul>
+    <p>The maintainer's accounts on GitHub and SignPath use multi-factor authentication.</p>
+
+    <h2 id="privacy">Privacy</h2>
+    <p>This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it. The only network request is the update check, which runs when you click &ldquo;Check for updates&rdquo; or when you turn on &ldquo;Check at startup&rdquo; (off by default); it sends no identifier. See <a href="security.html">Security</a> for what the app reads and stores.</p>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p><a href="https://github.com/leroidubid/SonicScrewdriver">Source code on GitHub</a> &middot;
+      <a href="https://github.com/leroidubid/SonicScrewdriver/blob/main/LICENSE">License: GPL-3.0</a>
+      (free software: use, modify and share under the same terms) &middot;
+      <a href="changelog.html">Changelog</a> &middot; <a href="games.html">Games</a></p>
+      <p>Not affiliated with or endorsed by the BBC.</p>
+    </div>
+  </footer>
+</body>
+</html>
