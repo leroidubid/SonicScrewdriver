@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-23
+
 ### Added
 
 - **Updates:** the Updates card shows the release notes of the new version before you install it (plain text, taken from the
